@@ -17,7 +17,7 @@
 
 ### Exploit Analysis
  
- * Obtain new samples from Github
+ * Obtain new samples from Mallory
  * Analyze exploit for efficacy and capability
 
 ### Malware Analysis
