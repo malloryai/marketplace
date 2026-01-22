@@ -44,22 +44,20 @@ MALLORY_API_KEY=your_api_key_here
 | Endpoint | Description |
 |----------|-------------|
 | `GET /v1/actors` | List threat actors |
-| `GET /v1/actors/{identifier}` | Get threat actor details |
+| `GET /v1/malware/{identifier}/export` | Single vulnerability details with all related entities (actors, mentions, etc) |
 | `GET /v1/actors/trending/diff` | Get trending threat actors |
 | `GET /v1/malware` | List malware |
-| `GET /v1/malware/{identifier}` | Get malware details |
-| `GET /v1/malware/trending/diff` | Get trending malware |
 
 ### Vulnerabilities
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /v1/vulnerabilities` | List vulnerabilities |
-| `GET /v1/vulnerabilities/{identifier}` | Get vulnerability details (e.g., CVE-2024-1234) |
+| `GET /v1/vulnerabilities` | List vulnerabilities | |
+| `GET /v1/vulnerabilities/{identifier}/export` | Single vulnerability details with all related entities (exploits, exploitations, mentions, detection signatures, vulnerable configurations, advisories) |
 | `GET /v1/vulnerabilities/trending/diff` | Get trending vulnerabilities |
 | `GET /v1/vulnerabilities/{identifier}/exploits` | Get exploits for a vulnerability |
 | `GET /v1/vulnerabilities/{identifier}/exploitations` | Get exploitation activity |
-| `GET /v1/vulnerabilities/{identifier}/export` | Export complete vulnerability intel with all related entities (exploits, exploitations, mentions, detection signatures, vulnerable configurations, advisories) |
+
 
 ### Exploits & Exploitations
 
@@ -93,13 +91,6 @@ MALLORY_API_KEY=your_api_key_here
 | `GET /v1/observables` | List observables (IOCs) |
 | `GET /v1/detection_signatures` | List detection signatures |
 | `GET /v1/opinions` | List threat opinions/assessments |
-
-### Dashboards
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /v1/dashboards/current-events` | Current threat events |
-| `GET /v1/dashboards/vulnerabilities` | Vulnerability dashboard |
 
 ### Organizations & Workspaces
 
