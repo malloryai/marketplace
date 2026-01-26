@@ -1,5 +1,11 @@
+## Mallory Skills Agent
 
-## Skills 
+This repository contains the necessary files for adding `mallory-agent` as a skill to claude code. The mallory agent provides the latest threat intelligence information about threat actors, their ttps, exploits, vulnerabilities and malware. It uses the mallory api to obtain the necessary information. 
+
+An API key is required for this skill. Visit `https://app.mallory.ai/api/keys` to obtain a key and place it in a .api_key file.
+
+
+## Some example use cases below.
 
 ### Attack Surface Management 
 
