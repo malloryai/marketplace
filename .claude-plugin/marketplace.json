@@ -6,13 +6,12 @@
   },
   "metadata": {
     "description": "Security operations skills for threat intelligence, detection engineering, adversary emulation, and vulnerability research",
-    "version": "1.0.0",
-    "pluginRoot": "./plugins"
+    "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "mallory",
-      "source": "./mallory",
+      "source": "./plugins/mallory",
       "description": "Security operations skills for threat intelligence, detection engineering, adversary emulation, and vulnerability research",
       "version": "0.1.0",
       "author": {
