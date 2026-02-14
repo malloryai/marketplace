@@ -133,6 +133,7 @@ venv.bak/
 
 # Secrets / API keys
 .api_key
+**/.api_key
 *.key
 *.pem
 credentials.json

@@ -1,166 +1,115 @@
-## Mallory Skills Agent
+## Mallory Security Plugin Marketplace
 
-A collection of Claude Code/OpenCode-compatible skills for security operations practitioners. Provides threat intelligence, feed discovery, image generation, and security research capabilities.
+A [Claude Code plugin marketplace](https://code.claude.com/docs/en/plugin-marketplaces) providing security operations skills for threat intelligence, adversary emulation, and vulnerability research.
 
 ## Quick Start
 
 ```bash
-# Clone the repo
-git clone https://github.com/malloryai/mallory-agent.git
-cd mallory-agent
+# Add the marketplace
+/plugin marketplace add malloryai/marketplace
 
-# Install dependencies (requires Python 3.12+)
-pdm install
-
-# For skills with additional dependencies, install their group:
-pdm install -G intel-feed-finder   # For intel-feed-finder skill
-pdm install -G image-gen           # For image-gen skill
+# Install the plugin
+/plugin install mallory@mallory-security
 ```
 
 ## API Key Setup
 
-An API key is required for the Mallory API skill. Visit `https://app.mallory.ai/api/keys` to obtain a key:
+The **mallory-api** skill is the hub for all Mallory API access. The **adversary-emulation-planning** and **vulnerability-escalation** skills use mallory-api when they need threat actor or vulnerability data. Set your API key once:
 
 ```bash
-# Set via environment variable (recommended)
 export MALLORY_API_KEY="your-api-key"
-
-# Or store in a file
-echo "your-api-key" > .claude/skills/mallory-api/.api_key
 ```
+
+Get a key at `https://app.mallory.ai/api/keys`.
+
+## Available Skills
+
+The `mallory` plugin includes the following skills:
+
+| Skill                            | Runtime   | Description                                                                                               |
+| -------------------------------- | --------- | --------------------------------------------------------------------------------------------------------- |
+| **mallory-api**                  | python    | Query Mallory threat intelligence API for actors, vulnerabilities, exploits, malware (hub for API access) |
+| **adversary-emulation-planning** | knowledge | Adversary emulation and TTP research using MITRE ATT&CK; uses mallory-api for data                        |
+| **vulnerability-escalation**     | knowledge | Privilege escalation and vulnerability chain analysis; uses mallory-api for data                          |
+
+## Example Use Cases
+
+### Threat Intelligence
+
+- Query trending vulnerabilities and threat actors
+- Get detailed exploit and exploitation activity data
+
+### Detection Engineering
+
+- Monitor news for new TTPs and IoC information
+- Generate detection candidates in KQL / SQL / Sigma
+
+### Adversary Simulation
+
+- Research threat actor TTPs via MITRE ATT&CK
+- Plan red team and purple team exercises
+
+### Exploit & Vulnerability Analysis
+
+- Analyze exploit efficacy and capability
+- Map privilege escalation chains
 
 ## Repository Structure
 
 ```
-mallory-agent/
-├── .claude/
-│   ├── Claude.md              # Pack-level agent instructions
-│   └── skills/                # Canonical skill location
-│       ├── mallory-api/       # Threat intelligence API
-│       ├── intel-feed-finder/ # RSS/Atom feed discovery
-│       ├── image-gen/         # AI image generation
-│       ├── adversary-emulation/
-│       └── vulnerability-escalation/
-├── skills/                    # Symlink to .claude/skills/ (backward compat)
-├── docs/                      # Shared documents (OpenAPI specs)
-├── scripts/                   # Repo-level utilities
-├── pyproject.toml             # Root dependencies + optional groups
+marketplace/
+├── .claude-plugin/
+│   └── marketplace.json              # Marketplace catalog
+├── plugins/
+│   └── mallory/                      # The mallory plugin
+│       ├── .claude-plugin/
+│       │   └── plugin.json
+│       ├── skills/
+│       │   ├── mallory-api/
+│       │   │   ├── SKILL.md
+│       │   │   ├── reference.md
+│       │   │   └── scripts/client.py
+│       │   ├── adversary-emulation-planning/
+│       │   │   └── SKILL.md
+│       │   └── vulnerability-escalation/
+│       │       └── SKILL.md
+├── scripts/
+│   └── validate_plugins.py
+├── pyproject.toml
 └── README.md
 ```
 
-**Canonical skill path:** `.claude/skills/<skill-name>/SKILL.md`
-
-The `skills/` directory is a symlink to `.claude/skills/` for backward compatibility.
-
-## Available Skills
-
-| Skill                        | Directory                                  | Description                                                                          |
-| ---------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
-| **mallory-api**              | `.claude/skills/mallory-api/`              | Query Mallory threat intelligence API for actors, vulnerabilities, exploits, malware |
-| **intel-feed-finder**        | `.claude/skills/intel-feed-finder/`        | Discover RSS/Atom/JSON feeds from URLs for threat intel sources                      |
-| **image-gen**                | `.claude/skills/image-gen/`                | Generate images using Google Imagen or OpenAI models                                 |
-| **adversary-emulation**      | `.claude/skills/adversary-emulation/`      | Adversary emulation and TTP research                                                 |
-| **vulnerability-escalation** | `.claude/skills/vulnerability-escalation/` | Privilege escalation and vulnerability chain analysis                                |
-
-## Example Use Cases
-
-### Attack Surface Management
-
-- Correlate an organization to its top level domains
-- Search for subdomains
-- Resolve subdomains to hosts, scope an analysis
-- Analyze an application for exposures or vulnerabilities
-
-### Exposure Management
-
-- Monitor a technology for recent component or library vulnerabilities
-- Monitor the news for recent component or library vulnerabilities
-- Search GitHub/GitLab repositories for affected instances of a given vulnerability
-
-### Threat Intelligence
-
-- Discover RSS feeds for security blogs and vendor advisories
-- Query trending vulnerabilities and threat actors
-- Get detailed exploit and exploitation activity data
-
-### Exploit Analysis
-
-- Obtain new samples from Mallory
-- Analyze exploit for efficacy and capability
-
-### Malware Analysis
-
-- Obtain new samples from VirusTotal
-- Analyze samples for maliciousness
-
-### Detection Engineering
-
-- Monitor the news for new TTPs and IoC information
-- Generate detection candidates in KQL / SQL / Sigma
-- Search SIEMs for identification of the behavior
-
-## Compatibility
-
-This skillpack is compatible with:
-
-- **Claude Code** (via `.claude/skills/` directory)
-- **OpenCode** (via `.claude/skills/` or symlinked `skills/`)
-
-Skills follow the [Claude Code skill authoring best practices](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices) and use OpenCode-compatible naming conventions.
-
 ## Development
 
-```bash
-# Validate all skills
-pdm run python scripts/validate_skills.py
+### Validate
 
-# Run a skill script directly
-pdm run python .claude/skills/intel-feed-finder/scripts/rss_finder.py --help
+```bash
+python3 scripts/validate_plugins.py --verbose
 ```
 
-## Skill Format
+### Adding a New Skill
 
-Each skill has a `SKILL.md` file with YAML frontmatter:
+1. Create directory: `plugins/mallory/skills/<skill-name>/`
+2. Create `SKILL.md` with frontmatter (`name`, `description`, `version`, `runtime`)
+3. Add scripts in `scripts/` subdirectory if needed
+4. Run `python3 scripts/validate_plugins.py` to verify
+
+### Skill Format
+
+Each skill has a `SKILL.md` with YAML frontmatter:
 
 ```yaml
 ---
-name: my-skill # Must match directory name (OpenCode convention)
-version: 1.0.0 # Semantic version
-description: Brief description of what the skill does (max 1024 chars)
-runtime: python # Runtime: python, knowledge, docker (future)
-deps-group: my-skill # Optional: PDM dependency group name
-entrypoints: # Optional: executable scripts
+name: my-skill
+version: 1.0.0
+description: Brief description (max 1024 chars)
+runtime: python # python, knowledge, or docker
+entrypoints: # Optional
   - scripts/main.py
 ---
-# Skill Title
-
-Markdown content with usage instructions...
 ```
 
-### Required Fields
+### Naming Rules
 
-- `name`: Lowercase alphanumeric with hyphens (e.g., `my-skill-name`)
-- `description`: What the skill does and when to use it (1-1024 chars)
-
-### Optional Fields
-
-- `version`: Semantic version (e.g., `1.0.0`)
-- `runtime`: Execution environment (`python`, `knowledge`, `docker`)
-- `deps-group`: PDM optional dependency group for this skill
-- `entrypoints`: List of executable scripts relative to skill directory
-
-### Naming Rules (OpenCode-compatible)
-
-- 1-64 characters
-- Lowercase alphanumeric
-- Single hyphen separators (no consecutive hyphens)
-- Cannot start or end with hyphen
+- 1-64 characters, lowercase alphanumeric with single hyphen separators
 - Regex: `^[a-z0-9]+(-[a-z0-9]+)*$`
-
-## Adding a New Skill
-
-1. Create directory: `.claude/skills/<skill-name>/`
-2. Create `SKILL.md` with frontmatter and instructions
-3. Add scripts in `scripts/` subdirectory (if needed)
-4. Add dependencies to root `pyproject.toml` as optional group (if needed)
-5. Run `python scripts/validate_skills.py` to verify

@@ -39,6 +39,16 @@ Authorization: Bearer <MALLORY_API_KEY>
 
 Use `curl` to make requests and `jq` to parse responses.
 
+## API Discovery
+
+Fetch the full OpenAPI spec on demand to discover all available endpoints, parameters, and response schemas:
+
+```bash
+curl -s "https://api.mallory.ai/openapi.json" | jq
+```
+
+Use this to look up exact query parameters, filter options, and response shapes before making API calls.
+
 ## Quick Reference
 
 ### Get Current User
@@ -83,20 +93,15 @@ curl -s "https://api.mallory.ai/v1/vulnerabilities/CVE-2024-1234/exploits" \
   -H "Authorization: Bearer $MALLORY_API_KEY" | jq
 ```
 
-## Full API Reference
-
-See `openapi-endpoints.md` in this directory for complete endpoint documentation, or fetch the live spec:
-
-```bash
-curl -s "https://api.mallory.ai/openapi.json" | jq
-```
-
 ## Python Client
 
 A Python client is available in `scripts/client.py`:
 
 ```bash
-# From repo root
-pdm run python .claude/skills/mallory-api/scripts/client.py GET /v1/user
-pdm run python .claude/skills/mallory-api/scripts/client.py GET /v1/vulnerabilities/CVE-2024-1234
+# Install dependencies
+pip install requests
+
+# Run the client
+python ${CLAUDE_PLUGIN_ROOT}/skills/mallory-api/scripts/client.py GET /v1/user
+python ${CLAUDE_PLUGIN_ROOT}/skills/mallory-api/scripts/client.py GET /v1/vulnerabilities/CVE-2024-1234
 ```
