@@ -7,31 +7,14 @@
     "email": "hello@mallory.ai"
   },
   "metadata": {
+    "description": "Mallory Security threat intelligence and security operations skills",
     "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "mallory",
       "source": "./plugins/mallory",
-      "description": "Security operations skills for threat intelligence, detection engineering, adversary emulation, and vulnerability research",
-      "version": "0.1.0",
-      "author": {
-        "name": "Mallory",
-        "email": "hello@mallory.ai"
-      },
-      "homepage": "https://app.mallory.ai",
-      "repository": "https://github.com/malloryai/marketplace",
-      "license": "MIT",
-      "keywords": [
-        "threat-intelligence",
-        "security",
-        "vulnerability",
-        "exploit",
-        "malware",
-        "adversary-emulation"
-      ],
-      "category": "security",
-      "tags": ["threat-intel", "cti", "secops", "osint"]
+      "strict": true
     }
   ]
 }
