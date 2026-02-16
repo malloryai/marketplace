@@ -12,11 +12,15 @@ A [Claude Code plugin marketplace](https://code.claude.com/docs/en/plugin-market
 /plugin install mallory@mallory-security
 ```
 
-## API Key Setup
+## Setup
 
-The **mallory-api** skill is the hub for all Mallory API access. The **adversary-emulation-planning** and **vulnerability-escalation** skills use mallory-api when they need threat actor or vulnerability data. Set your API key once:
+The **mallory-api** skill is the hub for all Mallory API access. It uses the official [`malloryapi`](https://pypi.org/project/malloryapi/) Python SDK. The **adversary-emulation-planning** and **vulnerability-escalation** skills use mallory-api when they need threat actor or vulnerability data.
 
 ```bash
+# Install the SDK
+pip install malloryapi
+
+# Set your API key (the SDK reads this automatically)
 export MALLORY_API_KEY="your-api-key"
 ```
 

@@ -1,107 +1,141 @@
 ---
 name: mallory-api
-version: 1.0.0
+version: 2.0.0
 description: Query the Mallory threat intelligence API for actors, vulnerabilities, exploits, and malware. Use when you need current threat intel data.
 runtime: python
-entrypoints:
-  - scripts/client.py
 ---
 
 # Mallory Threat Intelligence API
 
 You are a threat intelligence analyst. You provide the latest information about threats, actors, tactics, techniques and procedures. You also provide information about vulnerabilities, exploits and malware.
 
-## Base URL
+## SDK Setup
 
-```
-https://api.mallory.ai
+Install the official Python SDK from PyPI:
+
+```bash
+pip install malloryapi
 ```
 
 ## Authentication
 
-Check for an API key in the environment variable `MALLORY_API_KEY` or in the `.api_key` file in this skill directory.
+The SDK reads the `MALLORY_API_KEY` environment variable automatically. No manual header management is needed.
 
-For every request, load the api key first:
+If the environment variable is not set, pass the key explicitly:
 
-```bash
-MALLORY_API_KEY="${MALLORY_API_KEY:-$(cat .api_key 2>/dev/null)}"
-```
-
-Then include the API key in the `Authorization` header:
-
-```
-Authorization: Bearer <MALLORY_API_KEY>
+```python
+from malloryapi import MalloryApi
+client = MalloryApi(api_key="sk-...")
 ```
 
 **Security:** Never expose the API key in output or logs.
 
-## Tools
+## Usage
 
-Use `curl` to make requests and `jq` to parse responses.
+Always use the `malloryapi` Python SDK. Do **not** use `curl` or raw HTTP requests.
 
-## API Discovery
+```python
+from malloryapi import MalloryApi
 
-Fetch the full OpenAPI spec on demand to discover all available endpoints, parameters, and response schemas:
-
-```bash
-curl -s "https://api.mallory.ai/openapi.json" | jq
+client = MalloryApi()  # reads MALLORY_API_KEY from env
 ```
-
-Use this to look up exact query parameters, filter options, and response shapes before making API calls.
 
 ## Quick Reference
 
-### Get Current User
-
-```bash
-curl -s "https://api.mallory.ai/v1/user" \
-  -H "Authorization: Bearer $MALLORY_API_KEY"
-```
-
 ### Get Vulnerability Details
 
-```bash
-curl -s "https://api.mallory.ai/v1/vulnerabilities/CVE-2024-1234" \
-  -H "Authorization: Bearer $MALLORY_API_KEY" | jq
+```python
+vuln = client.vulnerabilities.get("CVE-2024-1234")
+print(vuln["cve_id"], vuln.get("cvss_base_score"))
 ```
 
 ### List Threat Actors
 
-```bash
-curl -s "https://api.mallory.ai/v1/actors" \
-  -H "Authorization: Bearer $MALLORY_API_KEY" | jq
+```python
+actors = client.threat_actors.list(limit=25)
+for actor in actors:
+    print(actor["display_name"])
 ```
 
 ### Get Trending Vulnerabilities
 
-```bash
-curl -s "https://api.mallory.ai/v1/vulnerabilities/trending/diff" \
-  -H "Authorization: Bearer $MALLORY_API_KEY" | jq
+```python
+trending = client.vulnerabilities.trending(period="7d")
+for v in trending:
+    print(v["cve_id"], v.get("cvss_base_score"))
 ```
 
 ### Search Content
 
-```bash
-curl -s "https://api.mallory.ai/v1/content_chunks/search?q=ransomware" \
-  -H "Authorization: Bearer $MALLORY_API_KEY" | jq
+```python
+results = client.content_chunks.search(q="ransomware")
+for chunk in results:
+    print(chunk["text"][:200])
 ```
 
 ### Get Exploits for a CVE
 
-```bash
-curl -s "https://api.mallory.ai/v1/vulnerabilities/CVE-2024-1234/exploits" \
-  -H "Authorization: Bearer $MALLORY_API_KEY" | jq
+```python
+exploits = client.vulnerabilities.exploits("CVE-2024-1234")
+for ex in exploits:
+    print(ex["name"], ex.get("url"))
 ```
 
-## Python Client
+### Trending Threat Actors
 
-A Python client is available in `scripts/client.py`:
-
-```bash
-# Install dependencies
-pip install requests
-
-# Run the client
-python ${CLAUDE_PLUGIN_ROOT}/skills/mallory-api/scripts/client.py GET /v1/user
-python ${CLAUDE_PLUGIN_ROOT}/skills/mallory-api/scripts/client.py GET /v1/vulnerabilities/CVE-2024-1234
+```python
+actors = client.threat_actors.trending(period="30d")
+for actor in actors:
+    print(actor["display_name"])
 ```
+
+### Get Malware Details
+
+```python
+malware = client.malware.get("emotet-uuid")
+print(malware["display_name"])
+```
+
+### Full-Text Search
+
+```python
+results = client.search.query(q="APT28", types="threat_actor,vulnerability")
+```
+
+## Pagination
+
+List methods return a `PaginatedResponse` with `.items`, `.total`, `.offset`, `.limit`, and `.has_more`:
+
+```python
+page = client.vulnerabilities.list(offset=0, limit=50)
+print(f"Showing {len(page)} of {page.total}")
+
+if page.has_more:
+    next_page = client.vulnerabilities.list(offset=50, limit=50)
+```
+
+Auto-paginate across all results:
+
+```python
+from malloryapi import paginate_sync
+
+for vuln in paginate_sync(client.vulnerabilities.list, limit=100):
+    print(vuln["cve_id"])
+```
+
+## Error Handling
+
+```python
+from malloryapi import NotFoundError, AuthenticationError
+
+try:
+    vuln = client.vulnerabilities.get("CVE-9999-0000")
+except NotFoundError:
+    print("Vulnerability not found")
+except AuthenticationError:
+    print("Invalid API key")
+```
+
+## Full Resource Reference
+
+See `reference.md` for the complete list of resources, accessors, and methods available in the SDK.
