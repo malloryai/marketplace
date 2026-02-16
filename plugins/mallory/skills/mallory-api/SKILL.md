@@ -1,8 +1,7 @@
 ---
 name: mallory-api
-version: 2.0.0
 description: Query the Mallory threat intelligence API for actors, vulnerabilities, exploits, and malware. Use when you need current threat intel data.
-runtime: python
+allowed-tools: Bash(python *), Bash(pip *)
 ---
 
 # Mallory Threat Intelligence API

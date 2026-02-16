@@ -1,12 +1,13 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "mallory",
+  "description": "Security operations skills for threat intelligence, detection engineering, adversary emulation, and vulnerability research",
   "owner": {
     "name": "Mallory",
     "email": "hello@mallory.ai"
   },
   "metadata": {
-    "description": "Security operations skills for threat intelligence, detection engineering, adversary emulation, and vulnerability research",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {
@@ -15,7 +16,8 @@
       "description": "Security operations skills for threat intelligence, detection engineering, adversary emulation, and vulnerability research",
       "version": "0.1.0",
       "author": {
-        "name": "Mallory"
+        "name": "Mallory",
+        "email": "hello@mallory.ai"
       },
       "homepage": "https://app.mallory.ai",
       "repository": "https://github.com/malloryai/marketplace",

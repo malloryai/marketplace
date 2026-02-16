@@ -1,7 +1,7 @@
 [project]
-name = "mallory-marketplace"
-version = "1.0.0"
-description = "Claude Code plugin marketplace for security operations"
+name = "marketplace"
+version = "1.1.0"
+description = "Claude Code plugin marketplace for Mallory - plugins for cti & security operations"
 authors = [
     {name = "Jonathan Cran", email = "jcran@mallory.ai"},
 ]
