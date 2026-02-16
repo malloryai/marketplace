@@ -26,11 +26,11 @@ Get a key at `https://app.mallory.ai/api/keys`.
 
 The `mallory` plugin includes the following skills:
 
-| Skill                            | Runtime   | Description                                                                                               |
-| -------------------------------- | --------- | --------------------------------------------------------------------------------------------------------- |
-| **mallory-api**                  | python    | Query Mallory threat intelligence API for actors, vulnerabilities, exploits, malware (hub for API access) |
-| **adversary-emulation-planning** | knowledge | Adversary emulation and TTP research using MITRE ATT&CK; uses mallory-api for data                        |
-| **vulnerability-escalation**     | knowledge | Privilege escalation and vulnerability chain analysis; uses mallory-api for data                          |
+| Skill                            | Runtime   | Description                                                                                                                                               |
+| -------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **mallory-api**                  | python    | Query Mallory threat intelligence API for actors, vulnerabilities, exploits, malware (hub for API access)                                                 |
+| **adversary-emulation-planning** | knowledge | Adversary emulation and TTP research using MITRE ATT&CK; uses mallory-api for data                                                                        |
+| **vulnerability-escalation**     | python    | Privilege escalation and vulnerability chain analysis; uses mallory-api + [assetquery](https://pypi.org/project/assetquery/) for deployed asset discovery |
 
 ## Example Use Cases
 
@@ -53,6 +53,7 @@ The `mallory` plugin includes the following skills:
 
 - Analyze exploit efficacy and capability
 - Map privilege escalation chains
+- Find where vulnerable software is deployed across AWS, Azure, GCP, GitHub, CrowdStrike
 
 ## Repository Structure
 
@@ -72,7 +73,9 @@ marketplace/
 │       │   ├── adversary-emulation-planning/
 │       │   │   └── SKILL.md
 │       │   └── vulnerability-escalation/
-│       │       └── SKILL.md
+│       │       ├── SKILL.md
+│       │       ├── reference.md
+│       │       └── scripts/escalation.py
 ├── scripts/
 │   └── validate_plugins.py
 ├── pyproject.toml
