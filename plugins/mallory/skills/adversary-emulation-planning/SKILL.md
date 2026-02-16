@@ -1,8 +1,6 @@
 ---
 name: adversary-emulation-planning
-version: 1.0.0
 description: Research and simulate threat actor TTPs using MITRE ATT&CK framework. Use when planning adversary simulations or TTP research.
-runtime: knowledge
 ---
 
 # Adversary Emulation
@@ -19,12 +17,12 @@ Research and document adversary tactics, techniques, and procedures (TTPs) for s
 
 ## Data Access
 
-When you need threat actor data, attack patterns, or TTPs from the Mallory platform, use the **mallory-api** skill. Key endpoints for adversary emulation:
+When you need threat actor data, attack patterns, or TTPs from the Mallory platform, use the **mallory-api** skill with the SDK:
 
-- `GET /v1/actors/{identifier}` — Threat actor details
-- `GET /v1/actors/{identifier}/attack_patterns` — MITRE ATT&CK techniques
-- `GET /v1/actors/{identifier}/export` — Full profile with relationships
-- `GET /v1/search?q=...&types=threat_actor` — Search for actors by name
+- `client.threat_actors.get("identifier")` — Threat actor details
+- `client.threat_actors.attack_patterns("identifier")` — MITRE ATT&CK techniques
+- `client.threat_actors.export("identifier")` — Full profile with relationships
+- `client.search.query(q="...", types="threat_actor")` — Search for actors by name
 
 ## Emulation Workflow
 

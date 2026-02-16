@@ -5,6 +5,9 @@ Plugin Marketplace Validator
 Validates the marketplace structure, plugin manifests, and SKILL.md files
 for Claude Code marketplace compatibility.
 
+You can also use the built-in validator: `claude plugin validate .` (or
+/plugin validate . from within Claude Code).
+
 Checks:
 - marketplace.json exists and is valid
 - Each plugin has .claude-plugin/plugin.json

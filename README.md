@@ -9,7 +9,7 @@ A [Claude Code plugin marketplace](https://code.claude.com/docs/en/plugin-market
 /plugin marketplace add malloryai/marketplace
 
 # Install the plugin
-/plugin install mallory@mallory-security
+/plugin install mallory@mallory
 ```
 
 ## Setup
@@ -91,13 +91,17 @@ marketplace/
 ### Validate
 
 ```bash
+# Custom validator (CI-friendly)
 python3 scripts/validate_plugins.py --verbose
+
+# Built-in Claude Code validation
+claude plugin validate .
 ```
 
 ### Adding a New Skill
 
 1. Create directory: `plugins/mallory/skills/<skill-name>/`
-2. Create `SKILL.md` with frontmatter (`name`, `description`, `version`, `runtime`)
+2. Create `SKILL.md` with frontmatter (`name`, `description`, optionally `allowed-tools`)
 3. Add scripts in `scripts/` subdirectory if needed
 4. Run `python3 scripts/validate_plugins.py` to verify
 
@@ -108,11 +112,8 @@ Each skill has a `SKILL.md` with YAML frontmatter:
 ```yaml
 ---
 name: my-skill
-version: 1.0.0
 description: Brief description (max 1024 chars)
-runtime: python # python, knowledge, or docker
-entrypoints: # Optional
-  - scripts/main.py
+allowed-tools: Bash(python *)
 ---
 ```
 
