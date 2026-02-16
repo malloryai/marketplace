@@ -1,7 +1,7 @@
 ---
 name: mallory-api
 description: Query the Mallory threat intelligence API for actors, vulnerabilities, exploits, and malware. Use when you need current threat intel data.
-allowed-tools: Bash(python *), Bash(pip *)
+allowed-tools: Bash(python *), Bash(pip *), Bash(uv *)
 ---
 
 # Mallory Threat Intelligence API
@@ -13,8 +13,14 @@ You are a threat intelligence analyst. You provide the latest information about 
 Install the official Python SDK from PyPI:
 
 ```bash
-pip install malloryapi
+# Preferred — works on all platforms
+uv pip install --system malloryapi
+
+# Alternative
+pip install --user malloryapi
 ```
+
+> **Warning:** Bare `pip install malloryapi` (without `--user`) will fail on macOS and Linux due to [PEP 668](https://peps.python.org/pep-0668/) externally-managed environment restrictions.
 
 ## Authentication
 
