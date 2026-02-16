@@ -37,7 +37,33 @@ client = MalloryApi(api_key="sk-...")
 
 ## Usage
 
-Always use the `malloryapi` Python SDK. Do **not** use `curl` or raw HTTP requests.
+You can call the API either via the **CLI** (after installing the package) or the **Python SDK**. Do **not** use `curl` or raw HTTP requests.
+
+### CLI (recommended for one-off queries)
+
+After `pip install malloryapi` or `uv pip install --system malloryapi`, the `malloryapi` command is available:
+
+```bash
+# List resources and methods (agent discovery)
+malloryapi --help-resources
+
+# Get a vulnerability
+malloryapi vulnerabilities get CVE-2024-1234
+
+# Trending threat actors (last 7 days, limit 10)
+malloryapi threat_actors trending --period 7d --limit 10
+
+# Full-text search
+malloryapi search query --q "APT28"
+
+# Use short aliases: vulns, actors, orgs, chunks, sigs, aps
+malloryapi vulns list --limit 5
+malloryapi actors trending --period 30d
+```
+
+Output is JSON to stdout; errors go to stderr with exit code 1. Use `--compact` for single-line JSON.
+
+### Python SDK
 
 ```python
 from malloryapi import MalloryApi
