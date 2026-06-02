@@ -30,7 +30,8 @@ client = MalloryApi()  # reads MALLORY_API_KEY from env
 | `observables(identifier)`                    | Related IOCs             | `client.vulnerabilities.observables("CVE-2024-1234")`          |
 | `detection_signatures(identifier)`           | Detection rules          | `client.vulnerabilities.detection_signatures("CVE-2024-1234")` |
 | `configurations(identifier)`                 | Affected configurations  | `client.vulnerabilities.configurations("CVE-2024-1234")`       |
-| `used_by_malware(identifier)`                | Malware using this vuln  | `client.vulnerabilities.used_by_malware("CVE-2024-1234")`      |
+| `malware(identifier)`                        | Associated malware       | `client.vulnerabilities.malware("CVE-2024-1234")`              |
+| `threat_actors(identifier)`                  | Actors exploiting this   | `client.vulnerabilities.threat_actors("CVE-2024-1234")`        |
 | `enrich(identifier)`                         | AI enrichment            | `client.vulnerabilities.enrich("CVE-2024-1234")`               |
 
 ### Threat Actors — `client.threat_actors`
