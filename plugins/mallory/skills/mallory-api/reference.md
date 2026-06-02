@@ -298,17 +298,6 @@ Geographic region/country taxonomy.
 | --------------------------- | ---------------- | ------------------------------------------------------ |
 | `query(q, types, **kwargs)` | Full-text search | `client.search.query(q="APT28", types="threat_actor")` |
 
-### Dashboards — `client.dashboards`
-
-Pre-computed overview data: a current-events feed, trending vulnerabilities, and periodic reports.
-
-| Method                             | Description                        | Example                                      |
-| ---------------------------------- | ---------------------------------- | -------------------------------------------- |
-| `current_events(limit, **kwargs)`  | Current threat events feed         | `client.dashboards.current_events(limit=24)` |
-| `vulnerabilities(limit, **kwargs)` | Dashboard trending vulnerabilities | `client.dashboards.vulnerabilities()`        |
-| `latest(report_type)`              | Latest report of a given type      | `client.dashboards.latest("weekly")`         |
-| `get(report_uuid)`                 | Get a report by UUID               | `client.dashboards.get("report-uuid")`       |
-
 ## Asset Exposure & Inventory
 
 ### Assets — `client.assets`
