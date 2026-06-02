@@ -56,7 +56,7 @@ malloryapi threat_actors trending --period 7d --limit 10
 # Full-text search
 malloryapi search query --q "APT28"
 
-# Use short aliases: vulns, actors, orgs, chunks, sigs, aps
+# Use short aliases: vulns, actors, orgs, chunks, sigs, aps, pkgs, geo
 malloryapi vulns list --limit 5
 malloryapi actors trending --period 30d
 ```
@@ -131,6 +131,46 @@ print(malware["display_name"])
 
 ```python
 results = client.search.query(q="APT28", types="threat_actor,vulnerability")
+```
+
+### Check Your Org's Exposure to a Threat
+
+```python
+# Is our attack surface exposed to a specific CVE (or actor/malware/IOC)?
+result = client.assets.exposure_check({"vulnerability": "CVE-2024-1234"})
+print(result.get("exposed"), result.get("affected_assets"))
+```
+
+### Look Up an Observable (IOC) by Value
+
+```python
+ioc = client.observables.get_by_type_name("domain", "evil.com")
+for opinion in client.observables.opinions(ioc["uuid"]):
+    print(opinion["source"], opinion["verdict"])
+```
+
+### List Integrations
+
+```python
+for integration in client.integrations.list():
+    print(integration["uuid"], integration["type"], integration.get("status"))
+```
+
+### Create a Schedule
+
+```python
+schedule = client.schedules.create({
+    "name": "Daily export",
+    "cron": "0 0 * * *",
+    "action": "export",
+})
+```
+
+### Create a Workspace
+
+```python
+ws = client.workspaces.create({"name": "Energy Sector"})
+client.workspaces.add_topics(ws["uuid"], {"topics": ["ransomware"]})
 ```
 
 ## Pagination
