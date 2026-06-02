@@ -64,6 +64,7 @@ client = MalloryApi()  # reads MALLORY_API_KEY from env
 | `observables(identifier)`                    | Related IOCs              | `client.malware.observables("emotet-uuid")`     |
 | `vulnerabilities(identifier)`                | Exploited vulnerabilities | `client.malware.vulnerabilities("emotet-uuid")` |
 | `attack_patterns(identifier)`                | MITRE ATT&CK techniques   | `client.malware.attack_patterns("emotet-uuid")` |
+| `threat_actors(identifier)`                  | Associated threat actors  | `client.malware.threat_actors("emotet-uuid")`   |
 | `enrich(identifier)`                         | AI enrichment             | `client.malware.enrich("emotet-uuid")`          |
 
 ### Exploits — `client.exploits`
@@ -149,6 +150,7 @@ client = MalloryApi()  # reads MALLORY_API_KEY from env
 | `export(identifier)`                         | Full profile export  | `client.advisories.export("advisory-uuid")`          |
 | `products(identifier)`                       | Affected products    | `client.advisories.products("advisory-uuid")`        |
 | `vulnerabilities(identifier)`                | Related vulns        | `client.advisories.vulnerabilities("advisory-uuid")` |
+| `sources()`                                  | List advisory sources | `client.advisories.sources()`                       |
 
 ### Weaknesses — `client.weaknesses`
 
