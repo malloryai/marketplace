@@ -102,8 +102,8 @@ ipython_config.py
 #poetry.lock
 
 # pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
+#   This is a marketplace repo, not a packaged Python project, so the lockfile is local noise.
+pdm.lock
 #   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
 #   in version control.
 #   https://pdm-project.org/#use-with-ide
