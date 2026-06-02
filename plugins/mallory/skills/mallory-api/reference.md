@@ -259,7 +259,11 @@ Geographic region/country taxonomy.
 | `labels()`                                   | List reference labels | `client.references.labels()`                                 |
 | `entities(identifier)`                       | Extracted entities    | `client.references.entities("ref-uuid")`                     |
 | `threat_actors(identifier)`                  | Mentioned actors      | `client.references.threat_actors("ref-uuid")`                |
+| `threat_actor_mentions(identifier)`          | Actor mention records | `client.references.threat_actor_mentions("ref-uuid")`        |
 | `vulnerabilities(identifier)`                | Mentioned vulns       | `client.references.vulnerabilities("ref-uuid")`              |
+| `vulnerability_mentions(identifier)`         | Vuln mention records  | `client.references.vulnerability_mentions("ref-uuid")`       |
+| `observables(identifier)`                    | Extracted IOCs        | `client.references.observables("ref-uuid")`                  |
+| `citations(identifier)`                      | Reference citations   | `client.references.citations("ref-uuid")`                    |
 
 ### Sources — `client.sources`
 
@@ -291,6 +295,17 @@ Geographic region/country taxonomy.
 | Method                      | Description      | Example                                                |
 | --------------------------- | ---------------- | ------------------------------------------------------ |
 | `query(q, types, **kwargs)` | Full-text search | `client.search.query(q="APT28", types="threat_actor")` |
+
+### Dashboards — `client.dashboards`
+
+Pre-computed overview data: a current-events feed, trending vulnerabilities, and periodic reports.
+
+| Method                             | Description                        | Example                                      |
+| ---------------------------------- | ---------------------------------- | -------------------------------------------- |
+| `current_events(limit, **kwargs)`  | Current threat events feed         | `client.dashboards.current_events(limit=24)` |
+| `vulnerabilities(limit, **kwargs)` | Dashboard trending vulnerabilities | `client.dashboards.vulnerabilities()`        |
+| `latest(report_type)`              | Latest report of a given type      | `client.dashboards.latest("weekly")`         |
+| `get(report_uuid)`                 | Get a report by UUID               | `client.dashboards.get("report-uuid")`       |
 
 ## Asset Exposure & Inventory
 
