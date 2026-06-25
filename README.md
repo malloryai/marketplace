@@ -35,6 +35,7 @@ The `mallory` plugin includes the following skills:
 | **mallory-api**                  | python    | Query Mallory threat intelligence API for actors, vulnerabilities, exploits, malware (hub for API access)                                                 |
 | **adversary-emulation-planning** | knowledge | Adversary emulation and TTP research using MITRE ATT&CK; uses mallory-api for data                                                                        |
 | **vulnerability-escalation**     | python    | Privilege escalation and vulnerability chain analysis; uses mallory-api + [assetquery](https://pypi.org/project/assetquery/) for deployed asset discovery |
+| **hunt-pack**                    | python    | Build a threat-hunt pack scoped to an industry + geography: prioritized actors with dated targeting evidence, ATT&CK techniques, IOCs, CVEs, per-actor hunting guidance, and a shareable brief                |
 
 ## Example Use Cases
 
@@ -42,6 +43,12 @@ The `mallory` plugin includes the following skills:
 
 - Query trending vulnerabilities and threat actors
 - Get detailed exploit and exploitation activity data
+
+### Threat Hunting
+
+- Build a hunt pack for an industry + region ("who's targeting energy in the US?")
+- Prioritize actors by recent, cited targeting evidence and get per-actor hunt checklists
+- Export an ATT&CK Navigator layer, IOC sweep list, and CVE watchlist
 
 ### Detection Engineering
 
@@ -76,10 +83,14 @@ marketplace/
 │       │   │   └── scripts/client.py
 │       │   ├── adversary-emulation-planning/
 │       │   │   └── SKILL.md
-│       │   └── vulnerability-escalation/
+│       │   ├── vulnerability-escalation/
+│       │   │   ├── SKILL.md
+│       │   │   ├── reference.md
+│       │   │   └── scripts/escalation.py
+│       │   └── hunt-pack/
 │       │       ├── SKILL.md
-│       │       ├── reference.md
-│       │       └── scripts/escalation.py
+│       │       ├── assets/regions.json
+│       │       └── scripts/build_hunt_pack.py
 ├── scripts/
 │   └── validate_plugins.py
 ├── pyproject.toml
