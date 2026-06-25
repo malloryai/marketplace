@@ -2,9 +2,10 @@
 """Build a timeline of a threat actor's observed ATT&CK tactics over time.
 
 Pulls every attack-pattern observation Mallory has attributed to an actor,
-enriches each technique with its MITRE ATT&CK tactic(s), buckets the
-observations into time periods, and reports how the actor's TTP mix shifts
-period to period -- which techniques and tactics emerge, recur, or fade.
+buckets the observations into time periods, and reports how the actor's TTP
+mix shifts period to period -- which techniques and tactics emerge, recur, or
+fade. Each technique's MITRE ATT&CK tactic(s) come from the server-side
+attack_patterns/overview aggregation (a few calls), not a per-technique fetch.
 
 Each observation links to the source reference that reported it, so the
 timeline is auditable: every technique in a period traces back to citations.
@@ -16,13 +17,14 @@ Requires the official SDK and an API key:
 Usage:
     tactic_timeline.py "ShinyHunters"
     tactic_timeline.py "APT28" --period month --format markdown
-    tactic_timeline.py <uuid> --date-source observed --top 12
+    tactic_timeline.py <uuid> --date-source published --top 12  # slower
 """
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+import time
 from collections import Counter, defaultdict
 from datetime import datetime
 
@@ -39,6 +41,28 @@ except ImportError:
 def log(msg: str) -> None:
     """Progress to stderr so stdout stays clean JSON/markdown."""
     sys.stderr.write(msg + "\n")
+    sys.stderr.flush()
+
+
+def progress(label: str, i: int, total: int, start: float) -> None:
+    """Live-updating single-line progress bar on stderr (count, %, rate, ETA).
+
+    Only animates when stderr is a TTY; otherwise emits a line every 10% so
+    piped/redirected runs still show movement without spamming carriage
+    returns. Writes a trailing newline once complete.
+    """
+    elapsed = time.time() - start
+    rate = i / elapsed if elapsed > 0 else 0.0
+    eta = (total - i) / rate if rate > 0 else 0.0
+    pct = (i / total * 100) if total else 100.0
+    msg = (f"  {label}: {i}/{total} ({pct:3.0f}%)  "
+           f"{rate:4.1f}/s  ETA {eta:4.0f}s")
+    if sys.stderr.isatty():
+        sys.stderr.write("\r" + msg + "   ")
+        if i >= total:
+            sys.stderr.write("\n")
+    elif total and (i >= total or i % max(1, total // 10) == 0):
+        sys.stderr.write(msg + "\n")
     sys.stderr.flush()
 
 
@@ -77,32 +101,51 @@ def fetch_observations(client: "MalloryApi", uuid: str, cap: int) -> list[dict]:
     return obs[:cap]
 
 
-def enrich_tactics(client: "MalloryApi", mitre_ids: set) -> dict[str, list[str]]:
-    """Map each MITRE technique id to its ATT&CK tactic(s)."""
-    tactics: dict[str, list[str]] = {}
-    for i, mid in enumerate(sorted(mitre_ids), 1):
-        try:
-            ap = client.attack_patterns.get(mid)
-            tactics[mid] = ap.get("tactics") or ["unknown"]
-        except Exception:
-            tactics[mid] = ["unknown"]
-        if i % 25 == 0:
-            log(f"  enriched tactics {i}/{len(mitre_ids)}")
-    return tactics
+def fetch_tactic_map(client: "MalloryApi", uuid: str) -> dict[str, list[str]]:
+    """Map each of the actor's techniques to its ATT&CK tactic(s).
+
+    Uses the server-side ``attack_patterns/overview`` aggregation, which
+    returns one row per distinct technique with ``tactics`` already inline --
+    a handful of paginated calls total, replacing the old per-technique N+1
+    ``attack_patterns.get()`` loop. Keyed by both the attack-pattern UUID and
+    the MITRE id so observations can be joined on either.
+    """
+    tmap: dict[str, list[str]] = {}
+    offset = 0
+    while True:
+        page = client.threat_actors.attack_patterns_overview(
+            uuid, limit=100, offset=offset
+        )
+        data = page.get("data") if isinstance(page, dict) else None
+        if not data:
+            break
+        for row in data:
+            ap = row.get("attack_pattern") or {}
+            tactics = ap.get("tactics") or ["unknown"]
+            if ap.get("uuid"):
+                tmap[ap["uuid"]] = tactics
+            if ap.get("mitre_attack_id"):
+                tmap[ap["mitre_attack_id"]] = tactics
+        offset += len(data)
+        total = page.get("total", 0) if isinstance(page, dict) else 0
+        log(f"  mapped {offset}/{total} techniques to tactics")
+        if offset >= total:
+            break
+    return tmap
 
 
 def enrich_published(client: "MalloryApi", ref_uuids: set) -> dict[str, str]:
     """Map each reference UUID to its source publication date (ISO string)."""
     pub: dict[str, str] = {}
     refs = sorted(ref_uuids)
+    start = time.time()
     for i, ruuid in enumerate(refs, 1):
         try:
             ref = client.references.get(ruuid)
             pub[ruuid] = ref.get("published_at") or ref.get("created_at") or ""
         except Exception:
             pub[ruuid] = ""
-        if i % 50 == 0:
-            log(f"  enriched publish dates {i}/{len(refs)}")
+        progress("publish dates", i, len(refs), start)
     return pub
 
 
@@ -145,7 +188,9 @@ def build_timeline(obs: list[dict], tactics: dict, pub: dict,
         mid = o.get("mitre_attack_id", "?")
         by_period[key]["techniques"][mid] += 1
         by_period[key]["count"] += 1
-        for t in tactics.get(mid, ["unknown"]):
+        tech1 = (tactics.get(o.get("attack_pattern_uuid", ""))
+                 or tactics.get(mid) or ["unknown"])
+        for t in tech1:
             by_period[key]["tactics"][t] += 1
 
     name_of = {o.get("mitre_attack_id"): o.get("display_name") for o in obs}
@@ -233,10 +278,11 @@ def main() -> int:
     ap.add_argument("--period", choices=["month", "quarter", "year"],
                     default="quarter", help="Time bucket granularity (default: quarter)")
     ap.add_argument("--date-source", choices=["observed", "published"],
-                    default="published",
-                    help="Date axis: 'published' = source publication date "
-                         "(accurate, slower; default); 'observed' = when Mallory "
-                         "recorded it (fast)")
+                    default="observed",
+                    help="Date axis: 'observed' = when Mallory recorded the "
+                         "observation (fast, default); 'published' = source "
+                         "publication date (more accurate but slow -- fetches "
+                         "each distinct reference one by one)")
     ap.add_argument("--format", choices=["json", "markdown"], default="json")
     ap.add_argument("--top", type=int, default=10,
                     help="Max techniques to show per period in markdown")
@@ -263,9 +309,8 @@ def main() -> int:
 
     tactics: dict[str, list[str]] = {}
     if not args.no_tactics:
-        mids = {o.get("mitre_attack_id") for o in obs if o.get("mitre_attack_id")}
-        log(f"Enriching {len(mids)} techniques with ATT&CK tactics...")
-        tactics = enrich_tactics(client, mids)
+        log("Mapping techniques to ATT&CK tactics (overview)...")
+        tactics = fetch_tactic_map(client, uuid)
 
     pub: dict[str, str] = {}
     if args.date_source == "published":
