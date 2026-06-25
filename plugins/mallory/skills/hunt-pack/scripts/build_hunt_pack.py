@@ -81,12 +81,16 @@ def fetch_all(fn, *args, page=200, cap=2000, **kw):
 # Recency
 # --------------------------------------------------------------------------- #
 def _parse_dt(s):
+    """Parse an ISO timestamp to a timezone-aware datetime (assume UTC if naive)."""
     if not s:
         return None
     try:
-        return datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(str(s).replace("Z", "+00:00"))
     except ValueError:
         return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def recency_weight(dt, now, half_life_days=90.0):
@@ -460,12 +464,8 @@ def _ev_dt(r):
 
 
 def _ev_ts(r):
-    dt = _ev_dt(r)
-    if dt is None:
-        return 0.0
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.timestamp()
+    dt = _ev_dt(r)  # _parse_dt guarantees tz-aware
+    return dt.timestamp() if dt else 0.0
 
 
 def why_relevant(scored, limit=3):
