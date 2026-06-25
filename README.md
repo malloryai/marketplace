@@ -35,6 +35,7 @@ The `mallory` plugin includes the following skills:
 | **mallory-api**                  | python    | Query Mallory threat intelligence API for actors, vulnerabilities, exploits, malware (hub for API access)                                                 |
 | **adversary-emulation-planning** | knowledge | Adversary emulation and TTP research using MITRE ATT&CK; uses mallory-api for data                                                                        |
 | **vulnerability-escalation**     | python    | Privilege escalation and vulnerability chain analysis; uses mallory-api + [assetquery](https://pypi.org/project/assetquery/) for deployed asset discovery |
+| **compromised-package-scan**     | python    | Cross-reference GitHub SBOMs against Mallory's latest compromised packages to find supply-chain exposure; uses mallory-api + the `gh` CLI                  |
 
 ## Example Use Cases
 
@@ -59,6 +60,12 @@ The `mallory` plugin includes the following skills:
 - Map privilege escalation chains
 - Find where vulnerable software is deployed across AWS, Azure, GCP, GitHub, CrowdStrike
 
+### Supply-Chain Exposure
+
+- Pull the latest compromised packages (npm/PyPI account takeovers, malicious versions) from Mallory
+- Pre-process a repo's GitHub SBOM into a normalized package/version list
+- Cross-reference to flag confirmed-compromised vs. needs-review dependencies
+
 ## Repository Structure
 
 ```
@@ -76,10 +83,14 @@ marketplace/
 │       │   │   └── scripts/client.py
 │       │   ├── adversary-emulation-planning/
 │       │   │   └── SKILL.md
-│       │   └── vulnerability-escalation/
+│       │   ├── vulnerability-escalation/
+│       │   │   ├── SKILL.md
+│       │   │   ├── reference.md
+│       │   │   └── scripts/escalation.py
+│       │   └── compromised-package-scan/
 │       │       ├── SKILL.md
 │       │       ├── reference.md
-│       │       └── scripts/escalation.py
+│       │       └── scripts/scan.py
 ├── scripts/
 │   └── validate_plugins.py
 ├── pyproject.toml
