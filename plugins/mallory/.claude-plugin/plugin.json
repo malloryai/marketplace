@@ -1,7 +1,7 @@
 {
   "name": "mallory",
   "description": "Security operations skills for threat intelligence, detection engineering, adversary emulation, and vulnerability research",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": {
     "name": "Mallory",
     "email": "hello@mallory.ai",
@@ -25,6 +25,7 @@
     "mitre-attack",
     "vulnerability-research",
     "privilege-escalation",
+    "threat-hunting",
     "mallory"
   ]
 }
