@@ -446,8 +446,8 @@ def script_json(value: object) -> str:
         .replace("&", "\\u0026")
         .replace("<", "\\u003c")
         .replace(">", "\\u003e")
-        .replace(" ", "\\u2028")
-        .replace(" ", "\\u2029")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
     )
 
 
@@ -803,7 +803,9 @@ def main() -> int:
 
     log(f"Resolving actor '{args.actor}'...")
     actor = resolve_actor(client, args.actor)
-    uuid = actor["uuid"]
+    uuid = actor.get("uuid")
+    if not uuid:
+        raise SystemExit(f"Resolved actor record for '{args.actor}' has no uuid.")
     name = actor.get("display_name") or actor.get("name")
     log(f"  {name} ({uuid})")
 
