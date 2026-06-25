@@ -35,6 +35,7 @@ The `mallory` plugin includes the following skills:
 | **mallory-api**                  | python    | Query Mallory threat intelligence API for actors, vulnerabilities, exploits, malware (hub for API access)                                                 |
 | **adversary-emulation-planning** | knowledge | Adversary emulation and TTP research using MITRE ATT&CK; uses mallory-api for data                                                                        |
 | **vulnerability-escalation**     | python    | Privilege escalation and vulnerability chain analysis; uses mallory-api + [assetquery](https://pypi.org/project/assetquery/) for deployed asset discovery |
+| **compromised-package-scan**     | python    | Cross-reference GitHub SBOMs against Mallory's latest compromised packages to find supply-chain exposure; uses mallory-api + the `gh` CLI                  |
 | **hunt-pack**                    | python    | Build a threat-hunt pack scoped to an industry + geography: prioritized actors with dated targeting evidence, ATT&CK techniques, IOCs, CVEs, per-actor hunting guidance, and a shareable brief                |
 
 ## Example Use Cases
@@ -66,6 +67,12 @@ The `mallory` plugin includes the following skills:
 - Map privilege escalation chains
 - Find where vulnerable software is deployed across AWS, Azure, GCP, GitHub, CrowdStrike
 
+### Supply-Chain Exposure
+
+- Pull the latest compromised packages (npm/PyPI account takeovers, malicious versions) from Mallory
+- Pre-process a repo's GitHub SBOM into a normalized package/version list
+- Cross-reference to flag confirmed-compromised vs. needs-review dependencies
+
 ## Repository Structure
 
 ```
@@ -87,6 +94,10 @@ marketplace/
 │       │   │   ├── SKILL.md
 │       │   │   ├── reference.md
 │       │   │   └── scripts/escalation.py
+│       │   ├── compromised-package-scan/
+│       │   │   ├── SKILL.md
+│       │   │   ├── reference.md
+│       │   │   └── scripts/scan.py
 │       │   └── hunt-pack/
 │       │       ├── SKILL.md
 │       │       ├── assets/regions.json
