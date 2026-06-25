@@ -1,6 +1,6 @@
 ---
 name: actor-tactic-timeline
-description: Chart how a threat actor's TTPs change over time by placing their observed MITRE ATT&CK attack patterns on a timeline. Use to track tactic evolution, spot emerging techniques, or detect shifts in an actor's playbook.
+description: Chart how a threat actor's TTPs change over time by placing their observed MITRE ATT&CK attack patterns on a timeline, and render it as a self-contained TTP heatmap. Use when the user asks for "tactics over time", "techniques over time", a "TTP heatmap", an "ATT&CK timeline", or "technique evolution" for a named threat actor — to track tactic evolution, spot emerging techniques, or detect shifts in an actor's playbook. API-only (malloryapi SDK + key); no database access required.
 allowed-tools: Bash(python *), Bash(python3 *), Bash(uv *), Bash(pip *)
 ---
 
@@ -101,9 +101,10 @@ dates and finish near-instantly. Use `--no-cache` to force a refetch.
   **Top N** (25 / 50 / all), **order** (kill-chain vs. volume), **bucket**
   (quarter vs. month), and **year range**. Headline stat cards and a tactic
   legend frame the chart. Writes to `--out` (or `<actor-slug>_tactics.html` in
-  the current directory) and prints the absolute path to stderr. The only
-  external dependency is the Geist webfont (loaded from Google Fonts), which
-  degrades to the system sans/mono stack offline.
+  the current directory) and prints the absolute path to stderr. The report is
+  **fully self-contained** — the Geist webfont is inlined as base64
+  `@font-face` (no external requests), so it renders offline and is CSP-safe to
+  publish directly with the **Artifact** tool.
 
 ## Analysis Workflow
 

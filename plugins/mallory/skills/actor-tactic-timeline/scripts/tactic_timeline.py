@@ -33,6 +33,7 @@ import time
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from pathlib import Path
 
 try:
     from malloryapi import MalloryApi, NotFoundError
@@ -42,6 +43,25 @@ except ImportError:
         "  uv pip install --system --upgrade malloryapi\n"
     )
     sys.exit(1)
+
+# Geist Sans + Mono inlined as base64 @font-face so the HTML report is fully
+# self-contained — no external requests, which keeps it CSP-safe for the
+# claude.ai Artifact tool.
+_ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+
+
+def load_font_css() -> str:
+    """Return an inline <style> block with the base64 Geist @font-face rules.
+
+    Falls back to an empty string (system sans/mono stack) if the asset is
+    missing, so the report still renders rather than failing hard.
+    """
+    css = _ASSETS_DIR / "fonts_css.txt"
+    try:
+        return "<style>" + css.read_text(encoding="utf-8") + "</style>"
+    except OSError:
+        log(f"warning: font asset not found at {css}; using system fonts")
+        return ""
 
 
 def log(msg: str) -> None:
@@ -396,8 +416,9 @@ def render_html(actor: dict, obs: list[dict], tactics: dict, pub: dict,
     kill-chain tactic, each cell's brightness scaled by how often the technique
     was attributed that period. Live controls (Top N, kill-chain vs. volume
     order, quarter vs. month, year range) re-render client-side from an embedded
-    monthly dataset. The only external dependency is the Geist webfont, which
-    degrades to the system sans/mono stack if offline.
+    monthly dataset. Fully self-contained — the Geist webfont is inlined as
+    base64 @font-face (no external requests), so the report is CSP-safe for the
+    claude.ai Artifact tool and renders identically offline.
     """
     name = actor.get("display_name") or actor.get("name") or "Unknown actor"
     rows, undated = build_heatmap_rows(obs, tactics, pub, date_source)
@@ -432,6 +453,7 @@ def render_html(actor: dict, obs: list[dict], tactics: dict, pub: dict,
         aka_html = f"aka {chips} &nbsp;—&nbsp; "
 
     repl = {
+        "__FONT_CSS__": load_font_css(),
         "__TITLE__": html.escape(name),
         "__EYEBROW__": "Mallory · Threat Actor Profile",
         "__AKA__": aka_html,
@@ -462,9 +484,7 @@ _HTML_TEMPLATE = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tactic Evolution: __TITLE__</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+__FONT_CSS__
 <style>
   html,body{margin:0;background:#070B14;}
   *{box-sizing:border-box;}

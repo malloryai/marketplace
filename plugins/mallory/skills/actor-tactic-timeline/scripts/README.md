@@ -12,5 +12,8 @@ export MALLORY_API_KEY=sk-...
 python tactic_timeline.py "ShinyHunters" --period month --format markdown
 ```
 
-Outputs JSON by default; pass `--format markdown` for a human-readable report.
-See the skill's SKILL.md for full options.
+Outputs JSON by default; pass `--format markdown` for a human-readable report,
+or `--format html` for a self-contained, interactive technique × time heatmap.
+The HTML inlines the Geist webfont from `../assets/fonts_css.txt` as base64
+`@font-face`, so it makes no external requests and is CSP-safe to publish with
+the Artifact tool. See the skill's SKILL.md for full options.
