@@ -207,24 +207,34 @@ def enrich_published(client: "MalloryApi", ref_uuids: set,
 
     start = time.time()
     done = 0
+    failed = 0
     lock = threading.Lock()
 
-    def fetch(ruuid: str) -> tuple[str, str]:
+    def fetch(ruuid: str) -> tuple[str, str | None]:
+        # Return None on a lookup failure so the caller can tell a failed read
+        # apart from a reference that genuinely has no publication date. We must
+        # not turn failures into "" and let them masquerade as resolved dates.
         try:
             ref = client.references.get(ruuid)
-            val = ref.get("published_at") or ref.get("created_at") or ""
+            return ruuid, ref.get("published_at") or ref.get("created_at") or ""
         except Exception:
-            val = ""
-        return ruuid, val
+            return ruuid, None
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
         for ruuid, val in ex.map(fetch, todo):
-            pub[ruuid] = val
-            cache[ruuid] = val
             with lock:
                 done += 1
+                if val is None:
+                    failed += 1
+                elif val:
+                    # Cache and keep only references with a real resolved date.
+                    pub[ruuid] = val
+                    cache[ruuid] = val
                 progress("publish dates", done, len(todo), start)
 
+    if failed:
+        log(f"  warning: {failed}/{len(todo)} reference lookups failed; those "
+            f"observations are excluded from the published timeline")
     if use_cache:
         _save_cache(cache)
     return pub
@@ -248,15 +258,16 @@ def bucket_key(iso: str, period: str) -> str | None:
 
 
 def build_timeline(obs: list[dict], tactics: dict, pub: dict,
-                   date_source: str, period: str) -> dict:
+                   date_source: str, period: str, top: int = 10) -> dict:
     """Aggregate observations into a period-by-period timeline."""
-    # Attach a bucket date to every observation.
+    # Attach a bucket date to every observation. Under the published axis we
+    # use only resolved publication dates -- never the observation's ingest
+    # date -- so the timeline can't claim "published" while bucketing on
+    # observed dates. Observations whose reference has no resolved date drop
+    # out (they have no place on a publication axis).
     enriched = []
     for o in obs:
-        if date_source == "published" and pub:
-            iso = pub.get(o.get("reference_uuid", ""), "") or o.get("created_at", "")
-        else:
-            iso = o.get("created_at", "")
+        iso = observation_iso(o, pub, date_source)
         key = bucket_key(iso, period)
         if key:
             enriched.append((key, o))
@@ -291,7 +302,7 @@ def build_timeline(obs: list[dict], tactics: dict, pub: dict,
             "tactics": dict(bucket["tactics"].most_common()),
             "top_techniques": [
                 {"id": m, "name": name_of.get(m), "count": c}
-                for m, c in techs.most_common(10)
+                for m, c in techs.most_common(max(1, top))
             ],
             "emerging_techniques": [
                 {"id": m, "name": name_of.get(m)} for m in new
@@ -360,9 +371,17 @@ def slugify(name: str | None) -> str:
 
 
 def observation_iso(o: dict, pub: dict, date_source: str) -> str:
-    """The date string an observation should be placed on (published or observed)."""
-    if date_source == "published" and pub:
-        return pub.get(o.get("reference_uuid", ""), "") or o.get("created_at", "")
+    """The date string an observation should be placed on (published or observed).
+
+    Under the ``published`` axis, return only the resolved publication date for
+    the observation's reference. We deliberately do NOT fall back to the
+    observation's own ``created_at`` (its ingest time): doing so would bucket a
+    record on an observed date while the report still claims ``published``.
+    Observations whose reference has no resolved date return "" and are treated
+    as undated upstream.
+    """
+    if date_source == "published":
+        return pub.get(o.get("reference_uuid", ""), "")
     return o.get("created_at", "")
 
 
@@ -380,10 +399,15 @@ def build_heatmap_rows(obs: list[dict], tactics: dict,
     for o in obs:
         mid = o.get("mitre_attack_id")
         if not mid:
+            # No technique id -> nothing to chart; still an excluded row.
+            undated += 1
             continue
         iso = observation_iso(o, pub, date_source)
-        m = iso[:7] if iso else ""
-        if not re.match(r"^\d{4}-\d{2}$", m):
+        # Validate with the same parser the timeline buckets use, so impossible
+        # months (e.g. 2024-33) are treated as undated rather than producing
+        # bogus periods.
+        m = bucket_key(iso, "month")
+        if not m:
             undated += 1
             continue
         tech = by_tech.get(mid)
@@ -406,6 +430,25 @@ def build_heatmap_rows(obs: list[dict], tactics: dict,
         for m, c in t["by"].items()
     ]
     return rows, undated
+
+
+def script_json(value: object) -> str:
+    """JSON-encode for safe embedding inside an inline ``<script>`` block.
+
+    ``json.dumps`` does not escape ``<`` / ``>`` / ``&`` or the U+2028/U+2029
+    line separators, so a technique/name field from the API containing
+    ``</script>`` (or those separators) could break out of the script context
+    and inject markup. Escaping them as ``\\uXXXX`` keeps the payload a literal
+    JS string while remaining valid JSON.
+    """
+    return (
+        json.dumps(value, separators=(",", ":"))
+        .replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace(" ", "\\u2028")
+        .replace(" ", "\\u2029")
+    )
 
 
 def render_html(actor: dict, obs: list[dict], tactics: dict, pub: dict,
@@ -467,10 +510,10 @@ def render_html(actor: dict, obs: list[dict], tactics: dict, pub: dict,
         "__UNDATED__": f"{undated:,}",
         "__DATE_AXIS__": html.escape(date_source),
         "__TOTAL_LABEL__": f"All {n_tech}",
-        "__RAW__": json.dumps(rows, separators=(",", ":")),
+        "__RAW__": script_json(rows),
         "__BUCKET__": "M" if period == "month" else "Q",
         "__RANGE__": "2022" if has_2022 else "all",
-        "__TOPN__": str(top if top in (25, 50) else 50),
+        "__TOPN__": str(max(1, top)),
     }
     out = _HTML_TEMPLATE
     for k, v in repl.items():
@@ -626,14 +669,14 @@ __FONT_CSS__
       var col=COLOR[t.tac] || "#4D8CFF";
       h+='<div style="position:sticky;left:0;z-index:3;background:'+C.PANEL+';display:flex;align-items:center;gap:8px;padding:0 10px 0 12px;height:'+rh+'px;border-right:1px solid '+C.BORDER+';border-bottom:1px solid '+C.BFAINT+';white-space:nowrap">'
         +'<span style="width:7px;height:7px;border-radius:2px;flex:none;background:'+col+'"></span>'
-        +'<span style="color:'+C.MUTED+';font-size:10px;width:64px;flex:none">'+t.tid+'</span>'
+        +'<span style="color:'+C.MUTED+';font-size:10px;width:64px;flex:none">'+esc(t.tid)+'</span>'
         +'<span style="color:'+(t.sub?"#AEB9CD":C.INK)+';font-size:11px;overflow:hidden;text-overflow:ellipsis" title="'+esc(t.name)+'">'+esc(t.name)+'</span></div>';
       periods.forEach(function(p,i){
         var v=t.by[p]||0;
         var ys=(yearStart[i]!==undefined && i>0) ? "box-shadow:inset 1px 0 0 "+C.BORDER+";" : "";
         if(!v){ h+='<div style="height:'+rh+'px;border-bottom:1px solid '+C.BFAINT+';'+ys+'"></div>'; return; }
         var a=(0.16+0.84*Math.sqrt(v/maxCell)).toFixed(3);
-        h+='<div style="height:'+rh+'px;display:flex;align-items:center;justify-content:center;font-size:9.5px;color:rgba(255,255,255,.85);font-variant-numeric:tabular-nums;border-bottom:1px solid '+C.BFAINT+';background:rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+','+a+');'+ys+'" data-n="'+esc(t.name)+'" data-id="'+t.tid+'" data-p="'+p+'" data-v="'+v+'">'+v+'</div>';
+        h+='<div style="height:'+rh+'px;display:flex;align-items:center;justify-content:center;font-size:9.5px;color:rgba(255,255,255,.85);font-variant-numeric:tabular-nums;border-bottom:1px solid '+C.BFAINT+';background:rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+','+a+');'+ys+'" data-n="'+esc(t.name)+'" data-id="'+esc(t.tid)+'" data-p="'+esc(p)+'" data-v="'+esc(v)+'">'+esc(v)+'</div>';
       });
       var pct=(t.total/maxTot*100).toFixed(0);
       h+='<div style="position:sticky;right:0;z-index:3;background:'+C.PANEL+';height:'+rh+'px;display:flex;align-items:center;gap:6px;padding:0 12px 0 9px;border-left:1px solid '+C.BORDER+';border-bottom:1px solid '+C.BFAINT+'">'
@@ -651,9 +694,9 @@ __FONT_CSS__
     if(!tip) return;
     document.querySelectorAll("#ssp-hm [data-v]").forEach(function(c){
       c.addEventListener("mousemove",function(e){
-        tip.innerHTML='<div style="color:#E8EDF5;font-weight:600;margin-bottom:4px">'+c.dataset.id+' · '+c.dataset.n+'</div>'
-          +'<div style="color:#8A97AD;font-size:10.5px">'+c.dataset.p+'</div>'
-          +'<div style="color:#E8EDF5;font-size:15px;margin-top:6px;font-variant-numeric:tabular-nums">'+c.dataset.v+' attribution'+(c.dataset.v>1?"s":"")+'</div>';
+        tip.innerHTML='<div style="color:#E8EDF5;font-weight:600;margin-bottom:4px">'+esc(c.dataset.id)+' · '+esc(c.dataset.n)+'</div>'
+          +'<div style="color:#8A97AD;font-size:10.5px">'+esc(c.dataset.p)+'</div>'
+          +'<div style="color:#E8EDF5;font-size:15px;margin-top:6px;font-variant-numeric:tabular-nums">'+esc(c.dataset.v)+' attribution'+(c.dataset.v>1?"s":"")+'</div>';
         tip.style.opacity=1;
         var x=e.clientX+16; if(x>innerWidth-280) x=e.clientX-272;
         tip.style.left=x+"px"; tip.style.top=e.clientY+"px";
@@ -706,6 +749,17 @@ __FONT_CSS__
 </html>"""
 
 
+def positive_int(value: str) -> int:
+    """argparse type: accept only integers >= 1, with a clear error."""
+    try:
+        ivalue = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{value!r} is not an integer")
+    if ivalue < 1:
+        raise argparse.ArgumentTypeError(f"{value!r} must be a positive integer")
+    return ivalue
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("actor", help="Threat actor name or UUID")
@@ -723,19 +777,27 @@ def main() -> int:
                     help="Write the report to this file instead of stdout. "
                          "For --format html, defaults to "
                          "'<actor-slug>_tactics.html' in the current directory.")
-    ap.add_argument("--top", type=int, default=10,
+    ap.add_argument("--top", type=positive_int, default=10,
                     help="Max techniques to show per period (markdown/html)")
     ap.add_argument("--max-observations", type=int, default=5000,
                     help="Cap on observations pulled (default: 5000)")
     ap.add_argument("--no-tactics", action="store_true",
                     help="Skip tactic enrichment (faster, but no tactic grouping)")
-    ap.add_argument("--workers", type=int, default=16,
+    ap.add_argument("--workers", type=positive_int, default=16,
                     help="Concurrent reference fetches for --date-source "
                          "published (default: 16; plateaus at the server rate "
                          "limit, but cuts wall time vs. serial)")
     ap.add_argument("--no-cache", action="store_true",
                     help="Bypass the on-disk published_at cache (force refetch)")
     args = ap.parse_args()
+
+    # The interactive HTML view only buckets by month/quarter client-side, so a
+    # yearly request can't be honored there -- reject it up front rather than
+    # silently rendering quarters that contradict --period year.
+    if args.format == "html" and args.period == "year":
+        raise SystemExit(
+            "--format html does not support --period year; use month or quarter"
+        )
 
     client = MalloryApi()
 
@@ -763,8 +825,20 @@ def main() -> int:
         log(f"Enriching {len(refs)} references with publication dates...")
         pub = enrich_published(client, refs, workers=args.workers,
                                use_cache=not args.no_cache)
+        if not pub:
+            # No reference resolved to a usable publication date. Fall back to
+            # the observed axis AND relabel it, so the report never claims
+            # "published" while bucketing on ingest dates.
+            log("  warning: no publication dates could be resolved; falling "
+                "back to the 'observed' date axis")
+            args.date_source = "observed"
 
-    timeline = build_timeline(obs, tactics, pub, args.date_source, args.period)
+    timeline = build_timeline(obs, tactics, pub, args.date_source, args.period,
+                              args.top)
+    if not timeline["periods"]:
+        log(f"  warning: none of the {len(obs)} observations could be placed "
+            f"on the '{args.date_source}' timeline (missing/invalid dates); "
+            f"the report will contain no periods")
 
     if args.format == "markdown":
         content = render_markdown(actor, timeline, len(obs), args.top)
