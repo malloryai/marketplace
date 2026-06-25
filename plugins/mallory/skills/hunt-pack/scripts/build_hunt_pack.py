@@ -140,10 +140,16 @@ def resolve_industry(client, query):
 
 
 def industry_match(actor_code, scope_codes):
-    """Hierarchical GICS match: evidence tagged at any level of the scope branch."""
+    """Match when the actor's evidence is the requested GICS code or a descendant.
+
+    Prefix is one-directional on purpose: a sector query ("10") matches its
+    sub-industries, but a narrow sub-industry query does NOT match broader
+    sector-level evidence — that would widen results exactly when the caller
+    asked to narrow them.
+    """
     if not actor_code:
         return False
-    return any(actor_code.startswith(c) or c.startswith(actor_code) for c in scope_codes)
+    return any(actor_code.startswith(c) for c in scope_codes)
 
 
 def load_regions():
@@ -151,28 +157,82 @@ def load_regions():
         return json.load(fh)
 
 
+def _pycountry():
+    """Return the pycountry module if installed, else None (cached)."""
+    global _PYCOUNTRY
+    if _PYCOUNTRY is None:
+        try:
+            import pycountry
+            _PYCOUNTRY = pycountry
+        except ImportError:
+            _PYCOUNTRY = False
+    return _PYCOUNTRY or None
+
+
+_PYCOUNTRY = None
+
+
+def _name_to_iso2(token):
+    """Resolve a country name to ISO-2 via pycountry (exact, then fuzzy). None if unavailable."""
+    pc = _pycountry()
+    if not pc:
+        return None
+    try:
+        c = (pc.countries.get(name=token) or pc.countries.get(common_name=token)
+             or pc.countries.get(official_name=token))
+        if c:
+            return c.alpha_2
+        res = pc.countries.search_fuzzy(token)
+        return res[0].alpha_2 if res else None
+    except LookupError:
+        return None
+
+
 def resolve_geo(query):
-    """Return (country_codes:set[str], labels:list[str]) from codes/region/country names."""
+    """Return (country_codes:set[str], labels:list[str]) from codes, region names, or country names.
+
+    Country-name/code resolution prefers pycountry (full ISO 3166 coverage); the
+    bundled regions.json supplies analyst region groupings and a colloquial-alias
+    fallback so the skill still works without pycountry installed.
+    """
     if not query:
         return set(), []
     data = load_regions()
     regions = {k.lower(): v for k, v in data.get("regions", {}).items()}
-    countries = {k.lower(): v for k, v in data.get("countries", {}).items()}
-    code_set = {v.upper() for v in data.get("countries", {}).values()}
+    aliases = {k.lower(): v.upper() for k, v in data.get("countries", {}).items()}
+    pc = _pycountry()
+
+    # Accept any code that is a valid ISO-2 (pycountry), a bundled alias target,
+    # or appears in a region list — so e.g. `--geo PE` works without an alias entry.
+    valid_codes = {c.alpha_2 for c in pc.countries} if pc else set()
+    valid_codes |= set(aliases.values())
+    for lst in regions.values():
+        valid_codes |= {c.upper() for c in lst}
+
     codes, labels = set(), []
     for token in [t.strip() for t in query.split(",") if t.strip()]:
-        tl = token.lower()
-        if token.upper() in code_set or (len(token) == 2 and token.upper() in code_set):
-            codes.add(token.upper())
-            labels.append(token.upper())
-        elif tl in regions:
-            codes.update(c.upper() for c in regions[tl])
-            labels.append(f"{token} ({len(regions[tl])} countries)")
-        elif tl in countries:
-            codes.add(countries[tl].upper())
-            labels.append(f"{token} ({countries[tl].upper()})")
+        tl, tu = token.lower(), token.upper()
+        if tl in regions:
+            cs = {c.upper() for c in regions[tl]}
+            codes |= cs
+            labels.append(f"{token} ({len(cs)} countries)")
+        elif len(token) == 2 and tu in valid_codes:
+            codes.add(tu)
+            labels.append(tu)
+        elif len(token) == 3 and pc and pc.countries.get(alpha_3=tu):
+            iso = pc.countries.get(alpha_3=tu).alpha_2
+            codes.add(iso)
+            labels.append(f"{token} ({iso})")
+        elif tl in aliases:
+            codes.add(aliases[tl])
+            labels.append(f"{token} ({aliases[tl]})")
         else:
-            labels.append(f"{token} (UNRESOLVED)")
+            iso = _name_to_iso2(token)
+            if iso:
+                codes.add(iso)
+                labels.append(f"{token} ({iso})")
+            else:
+                labels.append(f"{token} (UNRESOLVED)")
     return codes, labels
 
 
@@ -429,7 +489,7 @@ def build_checklist(a):
         })
 
     by_type = defaultdict(list)
-    for ioc in a["top_iocs"]:
+    for ioc in a["iocs"]:
         if ioc.get("value"):
             by_type[(ioc.get("type") or "other").lower()].append(ioc["value"])
     ioc_sweeps = []
@@ -514,9 +574,9 @@ def build_pack(scope, scored_list, tactics, cve_details, now):
             ],
             "malware": s["malware"][:15],
             "ioc_count": len(s["iocs"]),
-            "top_iocs": s["iocs"][:25],
+            "iocs": s["iocs"],          # full set — display limits applied in renderers
             "cve_count": len(cves),
-            "cves": cves[:25],
+            "cves": cves,               # full set — display limits applied in renderers
         }
         entry["hunt_checklist"] = build_checklist(entry)
         actors.append(entry)
@@ -569,7 +629,7 @@ def write_iocs_csv(path, pack):
         w.writerow(["ioc_type", "ioc_value", "actor", "actor_uuid",
                     "latest_opinion_published_at", "first_seen"])
         for actor in pack["actors"]:
-            for ioc in actor["top_iocs"]:
+            for ioc in actor["iocs"]:
                 w.writerow([ioc.get("type"), ioc.get("value"), actor["name"],
                             actor["uuid"], ioc.get("latest_opinion"), ioc.get("created_at")])
 
@@ -620,7 +680,9 @@ def write_report_md(path, pack):
             for w in a["why_relevant"]:
                 ctx = w["context"] or ""
                 date = f"`{w['date']}` " if w.get("date") else ""
-                src = f" ([{w.get('source') or 'source'}]({w['reference_url']}))" if w.get("reference_url") else ""
+                url = (w.get("reference_url") or "").strip()
+                src = (f" ([{w.get('source') or 'source'}]({url}))"
+                       if url.lower().startswith(("http://", "https://")) else "")
                 lines.append(f"  - {date}_{w['kind']} · {w['label']}_: {ctx}{src}")
 
         # What to check — concrete, actor-specific hunting guidance
@@ -648,6 +710,22 @@ def write_report_md(path, pack):
 
 def _esc(s):
     return (str(s) if s is not None else "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _safe_url(u):
+    """Return an attribute-safe http(s) URL, or '' if the scheme is not allowed.
+
+    reference_url is third-party data; rejecting non-http(s) schemes blocks
+    `javascript:`/`data:` hrefs, and escaping quotes/angle brackets prevents
+    breaking out of the href attribute.
+    """
+    if not u:
+        return ""
+    u = str(u).strip()
+    if not u.lower().startswith(("http://", "https://")):
+        return ""
+    return (u.replace("&", "&amp;").replace('"', "&quot;")
+            .replace("<", "&lt;").replace(">", "&gt;"))
 
 
 # Mallory dark design tokens (ported from the ttp-heatmap design system).
@@ -731,8 +809,9 @@ def render_brief_html(pack):
         if a["why_relevant"]:
             parts.append('<div class="label">Why relevant <span class="lt">— most recent first</span></div><ul class="why">')
             for w in a["why_relevant"]:
-                src = (f' <a class="src" href="{_esc(w["reference_url"])}">[{_esc(w.get("source") or "source")}]</a>'
-                       if w.get("reference_url") else "")
+                href = _safe_url(w.get("reference_url"))
+                src = (f' <a class="src" href="{href}" rel="noopener noreferrer">[{_esc(w.get("source") or "source")}]</a>'
+                       if href else "")
                 date = f'<span class="d">{_esc(w["date"])}</span> ' if w.get("date") else ""
                 parts.append(f'<li>{date}<span class="k">{_esc(w["kind"])} &middot; {_esc(w["label"])}</span> '
                              f'{_esc(w["context"])}{src}</li>')

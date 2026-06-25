@@ -1,5 +1,5 @@
 {
-  "_comment": "Geo resolution map. The Mallory geographies taxonomy endpoint returns empty, so actor target_geographies are matched by ISO-3166-1 alpha-2 country_code. This maps common country names and analyst regions to those codes.",
+  "_comment": "Geo resolution map. The Mallory geographies taxonomy endpoint returns empty, so actor target_geographies are matched by ISO-3166-1 alpha-2 country_code. Full country-name resolution is handled by the optional pycountry library; this file supplies (a) analyst region groupings that no standard library provides, and (b) a colloquial-alias fallback (UK, USA, UAE, ...) used when pycountry is not installed.",
   "countries": {
     "united states": "US", "usa": "US", "u.s.": "US", "america": "US",
     "united kingdom": "GB", "uk": "GB", "britain": "GB", "great britain": "GB",

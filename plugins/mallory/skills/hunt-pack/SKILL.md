@@ -23,9 +23,14 @@ CVEs, and ready-to-run hunt hypotheses — plus a shareable visual brief.
 Install the official Mallory SDK (the script imports it):
 
 ```bash
-uv pip install --system malloryapi      # preferred, all platforms
-# or: pip install --user malloryapi
+uv pip install --system malloryapi pycountry   # preferred, all platforms
+# or: pip install --user malloryapi pycountry
 ```
+
+`pycountry` is **optional but recommended**: it resolves any ISO 3166 country
+name (`--geo Peru`, `--geo Slovakia`) to its country code. Without it, geo
+resolution falls back to the bundled colloquial aliases and bare ISO-2 codes
+only; analyst region names (`Europe`, `APAC`, …) always work either way.
 
 > **Warning:** bare `pip install malloryapi` fails on macOS/Linux under
 > [PEP 668](https://peps.python.org/pep-0668/). Use `uv pip install --system`
@@ -78,7 +83,7 @@ Written to `--out`:
 1. Load the `artifact-design` skill first (required by the Artifact tool).
 2. Publish:
 
-```
+```text
 Artifact(file_path="<out>/brief.html", favicon="🎯", label="<industry>-<geo>-hunt")
 ```
 
@@ -113,9 +118,10 @@ Artifact(file_path="<out>/brief.html", favicon="🎯", label="<industry>-<geo>-h
 
 - `trending` accepts only `1d` / `7d` / `30d` (90d → HTTP 400).
 - The geography **taxonomy endpoint is empty**; geo is matched on actor
-  `country_code`. Region/country-name resolution uses the bundled
-  `assets/regions.json` — extend it if a country/region you need is missing
-  (an unresolved token is reported as `UNRESOLVED`).
+  `country_code`. Country names/codes resolve via `pycountry` (optional);
+  analyst region names come from `assets/regions.json`. An unresolved token is
+  reported as `UNRESOLVED` — add it to `regions.json` (region groups or the
+  alias fallback) if needed.
 - Relationship accessors (`attack_patterns`, `malware`, `observables`,
   `exploitations`) return a `data` key (raw dict), while `target_industries` /
   `target_geographies` return `items` (paginated). The script normalizes both.
@@ -125,7 +131,7 @@ Artifact(file_path="<out>/brief.html", favicon="🎯", label="<industry>-<geo>-h
 ## Files
 
 - `scripts/build_hunt_pack.py` — the whole pipeline (SDK-based, threaded fan-out).
-- `assets/regions.json` — region/country-name → ISO-2 country-code map.
+- `assets/regions.json` — analyst region groupings + colloquial country-name alias fallback.
 
 ## Related Skills
 
