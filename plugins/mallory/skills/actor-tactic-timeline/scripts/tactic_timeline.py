@@ -17,15 +17,21 @@ Requires the official SDK and an API key:
 Usage:
     tactic_timeline.py "ShinyHunters"
     tactic_timeline.py "APT28" --period month --format markdown
+    tactic_timeline.py "Scattered Spider" --format html --out /tmp/ss_tactics.html
     tactic_timeline.py <uuid> --date-source published --top 12  # slower
 """
 from __future__ import annotations
 
 import argparse
+import html
 import json
+import os
+import re
 import sys
+import threading
 import time
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 try:
@@ -134,18 +140,73 @@ def fetch_tactic_map(client: "MalloryApi", uuid: str) -> dict[str, list[str]]:
     return tmap
 
 
-def enrich_published(client: "MalloryApi", ref_uuids: set) -> dict[str, str]:
-    """Map each reference UUID to its source publication date (ISO string)."""
+CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          ".published_at_cache.json")
+
+
+def _load_cache() -> dict[str, str]:
+    try:
+        with open(CACHE_PATH) as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_cache(cache: dict[str, str]) -> None:
+    try:
+        with open(CACHE_PATH, "w") as fh:
+            json.dump(cache, fh)
+    except OSError:
+        pass
+
+
+def enrich_published(client: "MalloryApi", ref_uuids: set,
+                     workers: int = 16, use_cache: bool = True) -> dict[str, str]:
+    """Map each reference UUID to its source publication date (ISO string).
+
+    Reference reads are the slow part of a ``published`` timeline: the API has
+    no bulk reference endpoint and no inline publication date on observations,
+    and it rate-limits reference reads server-side (~1.6/s at scale). We do two
+    things to soften that: (1) an on-disk cache keyed by reference UUID, so the
+    cost is paid once across runs, and (2) a thread pool for the uncached
+    remainder. Parallelism plateaus against the server's rate limit, so the
+    cache is what actually makes reruns instant.
+    """
     pub: dict[str, str] = {}
+    cache = _load_cache() if use_cache else {}
     refs = sorted(ref_uuids)
+    todo = [r for r in refs if r not in cache]
+    for r in refs:
+        if r in cache:
+            pub[r] = cache[r]
+    if not todo:
+        log(f"  all {len(refs)} references cached")
+        return pub
+    log(f"  {len(refs) - len(todo)} cached, fetching {len(todo)} "
+        f"({workers} workers)")
+
     start = time.time()
-    for i, ruuid in enumerate(refs, 1):
+    done = 0
+    lock = threading.Lock()
+
+    def fetch(ruuid: str) -> tuple[str, str]:
         try:
             ref = client.references.get(ruuid)
-            pub[ruuid] = ref.get("published_at") or ref.get("created_at") or ""
+            val = ref.get("published_at") or ref.get("created_at") or ""
         except Exception:
-            pub[ruuid] = ""
-        progress("publish dates", i, len(refs), start)
+            val = ""
+        return ruuid, val
+
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        for ruuid, val in ex.map(fetch, todo):
+            pub[ruuid] = val
+            cache[ruuid] = val
+            with lock:
+                done += 1
+                progress("publish dates", done, len(todo), start)
+
+    if use_cache:
+        _save_cache(cache)
     return pub
 
 
@@ -272,6 +333,108 @@ def render_markdown(actor: dict, timeline: dict, total_obs: int, top: int) -> st
     return "\n".join(lines)
 
 
+def slugify(name: str | None) -> str:
+    """Filesystem-safe slug for an actor name (e.g. 'Scattered Spider')."""
+    slug = re.sub(r"[^a-z0-9]+", "_", (name or "actor").lower()).strip("_")
+    return slug or "actor"
+
+
+def render_html(actor: dict, timeline: dict, total_obs: int, top: int) -> str:
+    """Self-contained HTML report: a heatmap tactic matrix + period detail.
+
+    No external assets (inline CSS, no scripts) so the file opens straight
+    from disk. Matrix cells are shaded by observation count relative to the
+    busiest cell, so emphasis shifts read at a glance.
+    """
+    name = actor.get("display_name") or actor.get("name") or "Unknown actor"
+    periods = [p["period"] for p in timeline["periods"]]
+    matrix = timeline["tactic_matrix"]
+    tactics = timeline["tactic_order"]
+    peak = max((c for row in matrix.values() for c in row.values()), default=0)
+
+    def cell(count: int) -> str:
+        if not count:
+            return '<td class="z">·</td>'
+        # Perceptual-ish ramp toward Mallory blue; floor keeps low counts legible.
+        intensity = 0.12 + 0.88 * (count / peak) if peak else 0.0
+        return (f'<td style="background:rgba(0,102,255,{intensity:.3f});'
+                f'color:{"#fff" if intensity > 0.55 else "#0a1628"}">{count}</td>')
+
+    rows = []
+    for t in tactics:
+        cells = "".join(cell(matrix[t].get(p, 0)) for p in periods)
+        rows.append(f'<tr><th class="tac">{html.escape(t)}</th>{cells}</tr>')
+    head = "".join(f'<th class="per">{html.escape(p)}</th>' for p in periods)
+
+    detail = []
+    for p in timeline["periods"]:
+        em = ""
+        if p["emerging_techniques"]:
+            chips = "".join(
+                f'<span class="chip new">{html.escape(t["id"])}'
+                f'<em>{html.escape(t.get("name") or "")}</em></span>'
+                for t in p["emerging_techniques"][:top]
+            )
+            em = f'<div class="row"><span class="lbl">New</span>{chips}</div>'
+        tops = "".join(
+            f'<span class="chip">{html.escape(t["id"])}'
+            f'<em>{html.escape(t.get("name") or "")}</em>'
+            f'<b>×{t["count"]}</b></span>'
+            for t in p["top_techniques"][:top]
+        )
+        detail.append(
+            f'<section class="period"><h3>{html.escape(p["period"])}'
+            f'<span class="meta">{p["observation_count"]} obs · '
+            f'{p["distinct_techniques"]} techniques</span></h3>{em}'
+            f'<div class="row"><span class="lbl">Top</span>{tops}</div></section>'
+        )
+
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tactic Evolution: {html.escape(name)}</title>
+<style>
+:root{{--blue:#0066FF;--ink:#0a1628;--mut:#5b6b82;--line:#e4e9f0;--bg:#f7f9fc}}
+*{{box-sizing:border-box}}
+body{{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+color:var(--ink);background:var(--bg)}}
+.wrap{{max-width:1200px;margin:0 auto;padding:32px 24px 64px}}
+h1{{font-size:26px;margin:0 0 4px}}
+.sub{{color:var(--mut);margin:0 0 28px}}
+.sub b{{color:var(--ink)}}
+h2{{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);
+margin:36px 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}}
+.scroll{{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}}
+table{{border-collapse:collapse;font-size:13px;width:100%}}
+th,td{{padding:6px 8px;text-align:center;white-space:nowrap;border-bottom:1px solid var(--line)}}
+th.tac{{text-align:left;position:sticky;left:0;background:#fff;font-weight:600;z-index:1}}
+th.per{{color:var(--mut);font-weight:600;font-size:11px}}
+td.z{{color:#c2ccdb}}
+td{{font-variant-numeric:tabular-nums}}
+tr:last-child th,tr:last-child td{{border-bottom:none}}
+.period{{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:10px 0}}
+.period h3{{margin:0 0 10px;font-size:16px;display:flex;align-items:baseline;gap:10px}}
+.period h3 .meta{{font-size:12px;color:var(--mut);font-weight:400}}
+.row{{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}}
+.lbl{{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+width:42px;flex:none}}
+.chip{{display:inline-flex;align-items:baseline;gap:5px;background:var(--bg);
+border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-size:12px}}
+.chip em{{color:var(--mut);font-style:normal}}
+.chip b{{color:var(--blue);font-weight:600}}
+.chip.new{{background:rgba(0,102,255,.08);border-color:rgba(0,102,255,.25)}}
+</style></head><body><div class="wrap">
+<h1>Tactic Evolution: {html.escape(name)}</h1>
+<p class="sub"><b>{total_obs}</b> observations · granularity <b>{html.escape(timeline['period_granularity'])}</b>
+· date axis <b>{html.escape(timeline['date_source'])}</b> · <b>{len(periods)}</b> periods</p>
+<h2>Tactic emphasis over time</h2>
+<div class="scroll"><table><thead><tr><th class="tac">Tactic</th>{head}</tr></thead>
+<tbody>{''.join(rows)}</tbody></table></div>
+<h2>Period detail</h2>
+{''.join(detail)}
+</div></body></html>"""
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("actor", help="Threat actor name or UUID")
@@ -283,13 +446,24 @@ def main() -> int:
                          "observation (fast, default); 'published' = source "
                          "publication date (more accurate but slow -- fetches "
                          "each distinct reference one by one)")
-    ap.add_argument("--format", choices=["json", "markdown"], default="json")
+    ap.add_argument("--format", choices=["json", "markdown", "html"],
+                    default="json")
+    ap.add_argument("--out", metavar="PATH",
+                    help="Write the report to this file instead of stdout. "
+                         "For --format html, defaults to "
+                         "'<actor-slug>_tactics.html' in the current directory.")
     ap.add_argument("--top", type=int, default=10,
-                    help="Max techniques to show per period in markdown")
+                    help="Max techniques to show per period (markdown/html)")
     ap.add_argument("--max-observations", type=int, default=5000,
                     help="Cap on observations pulled (default: 5000)")
     ap.add_argument("--no-tactics", action="store_true",
                     help="Skip tactic enrichment (faster, but no tactic grouping)")
+    ap.add_argument("--workers", type=int, default=16,
+                    help="Concurrent reference fetches for --date-source "
+                         "published (default: 16; plateaus at the server rate "
+                         "limit, but cuts wall time vs. serial)")
+    ap.add_argument("--no-cache", action="store_true",
+                    help="Bypass the on-disk published_at cache (force refetch)")
     args = ap.parse_args()
 
     client = MalloryApi()
@@ -316,19 +490,32 @@ def main() -> int:
     if args.date_source == "published":
         refs = {o.get("reference_uuid") for o in obs if o.get("reference_uuid")}
         log(f"Enriching {len(refs)} references with publication dates...")
-        pub = enrich_published(client, refs)
+        pub = enrich_published(client, refs, workers=args.workers,
+                               use_cache=not args.no_cache)
 
     timeline = build_timeline(obs, tactics, pub, args.date_source, args.period)
 
     if args.format == "markdown":
-        print(render_markdown(actor, timeline, len(obs), args.top))
+        content = render_markdown(actor, timeline, len(obs), args.top)
+    elif args.format == "html":
+        content = render_html(actor, timeline, len(obs), args.top)
     else:
         out = {
             "actor": {"uuid": uuid, "name": name},
             "total_observations": len(obs),
             **timeline,
         }
-        print(json.dumps(out, indent=2, default=str))
+        content = json.dumps(out, indent=2, default=str)
+
+    out_path = args.out
+    if not out_path and args.format == "html":
+        out_path = f"{slugify(name)}_tactics.html"
+    if out_path:
+        with open(out_path, "w") as fh:
+            fh.write(content)
+        log(f"Wrote {args.format} report to {os.path.abspath(out_path)}")
+    else:
+        print(content)
     return 0
 
 

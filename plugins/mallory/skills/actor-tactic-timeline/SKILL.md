@@ -45,6 +45,9 @@ python ${CLAUDE_PLUGIN_ROOT}/skills/actor-tactic-timeline/scripts/tactic_timelin
 # Monthly cadence, human-readable report with a tactic-over-time matrix
 python ${CLAUDE_PLUGIN_ROOT}/skills/actor-tactic-timeline/scripts/tactic_timeline.py "Scattered Spider" --period month --format markdown
 
+# Standalone HTML report (heatmap matrix + period detail) written to a file
+python ${CLAUDE_PLUGIN_ROOT}/skills/actor-tactic-timeline/scripts/tactic_timeline.py "Scattered Spider" --format html --out ./scattered_spider_tactics.html
+
 # Anchor the timeline to when Mallory OBSERVED each record instead of source
 # publication dates (faster, but reflects ingest order, not real chronology)
 python ${CLAUDE_PLUGIN_ROOT}/skills/actor-tactic-timeline/scripts/tactic_timeline.py "APT28" --date-source observed
@@ -58,11 +61,29 @@ python ${CLAUDE_PLUGIN_ROOT}/skills/actor-tactic-timeline/scripts/tactic_timelin
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `--period {month,quarter,year}` | `quarter` | Time-bucket granularity |
-| `--date-source {observed,published}` | `published` | `published` = source publication date (accurate, one fetch per reference); `observed` = when Mallory recorded the observation (fast) |
-| `--format {json,markdown}` | `json` | Output format |
-| `--top N` | `10` | Max techniques shown per period (markdown) |
+| `--date-source {observed,published}` | `observed` | `observed` = when Mallory recorded the observation (instant, but reflects ingest order); `published` = source publication date (real-world chronology, but reads every distinct reference — see below) |
+| `--format {json,markdown,html}` | `json` | Output format |
+| `--out PATH` | stdout | Write the report to a file instead of stdout. For `--format html`, defaults to `<actor-slug>_tactics.html` in the current directory |
+| `--top N` | `10` | Max techniques shown per period (markdown/html) |
 | `--max-observations N` | `5000` | Cap on observations pulled |
 | `--no-tactics` | off | Skip ATT&CK tactic enrichment (faster) |
+| `--workers N` | `16` | Concurrent reference fetches for `--date-source published` |
+| `--no-cache` | off | Bypass the on-disk `published_at` cache (force refetch) |
+
+### Publication-date performance
+
+`--date-source published` is the only axis that yields real chronology, but it
+is the slow path: observations carry no inline publication date, the API has no
+bulk reference endpoint (UUID filtering on `references.list` is unsupported),
+and reference reads are **rate-limited server-side (~1.6/s at scale)**. So a
+first run over a heavily-reported actor (e.g. Scattered Spider, ~660 distinct
+references) takes several minutes regardless of `--workers` — parallelism
+plateaus against that ceiling.
+
+Two mitigations are built in: a thread pool (`--workers`) for the uncached
+remainder, and an on-disk cache (`.published_at_cache.json`, keyed by reference
+UUID) so the cost is paid **once** — subsequent runs for any actor reuse cached
+dates and finish near-instantly. Use `--no-cache` to force a refetch.
 
 ### Output
 
@@ -72,6 +93,11 @@ python ${CLAUDE_PLUGIN_ROOT}/skills/actor-tactic-timeline/scripts/tactic_timelin
   (tactic × period counts) for charting.
 - **Markdown**: a tactic-emphasis matrix across periods followed by per-period
   detail highlighting newly emerging and most-observed techniques.
+- **HTML** (`--format html`): a standalone, self-contained report (inline CSS,
+  no external assets) — the tactic matrix rendered as a count-shaded heatmap so
+  emphasis shifts read at a glance, followed by per-period detail with emerging
+  and top techniques as chips. Writes to `--out` (or `<actor-slug>_tactics.html`
+  in the current directory) and prints the absolute path to stderr.
 
 ## Analysis Workflow
 
