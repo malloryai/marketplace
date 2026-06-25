@@ -301,11 +301,11 @@ def build_timeline(obs: list[dict], tactics: dict, pub: dict,
             "distinct_techniques": len(techs),
             "tactics": dict(bucket["tactics"].most_common()),
             "top_techniques": [
-                {"id": m, "name": name_of.get(m), "count": c}
+                {"id": m, "name": name_of.get(m) or m, "count": c}
                 for m, c in techs.most_common(max(1, top))
             ],
             "emerging_techniques": [
-                {"id": m, "name": name_of.get(m)} for m in new
+                {"id": m, "name": name_of.get(m) or m} for m in new
             ],
         })
 
@@ -495,6 +495,7 @@ def render_html(actor: dict, obs: list[dict], tactics: dict, pub: dict,
         )
         aka_html = f"aka {chips} &nbsp;—&nbsp; "
 
+    topn = max(1, top)
     repl = {
         "__FONT_CSS__": load_font_css(),
         "__TITLE__": html.escape(name),
@@ -513,7 +514,12 @@ def render_html(actor: dict, obs: list[dict], tactics: dict, pub: dict,
         "__RAW__": script_json(rows),
         "__BUCKET__": "M" if period == "month" else "Q",
         "__RANGE__": "2022" if has_2022 else "all",
-        "__TOPN__": str(max(1, top)),
+        "__TOPN__": str(topn),
+        # The first "Show" preset mirrors the actual --top value (unless it is
+        # already 25/50, which keeps the familiar 25 | 50 | All trio), so the
+        # initial selection always has a matching, highlighted button.
+        "__TOP1V__": "25" if topn in (25, 50) else str(topn),
+        "__TOP1L__": "Top 25" if topn in (25, 50) else f"Top {topn}",
     }
     out = _HTML_TEMPLATE
     for k, v in repl.items():
@@ -560,7 +566,7 @@ __FONT_CSS__
         <div style="display:flex;gap:18px;flex-wrap:wrap;">
           <div style="display:flex;flex-direction:column;gap:5px;"><span style="font-family:'Geist Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#586780;">Show</span>
             <div id="ssp-topn" style="display:flex;background:#070B14;border:1px solid rgba(140,160,190,.16);border-radius:8px;padding:3px;">
-              <button data-v="25" style="appearance:none;border:0;background:transparent;color:#8A97AD;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;padding:5px 11px;border-radius:6px;cursor:pointer;font-weight:400;">Top 25</button>
+              <button data-v="__TOP1V__" style="appearance:none;border:0;background:transparent;color:#8A97AD;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;padding:5px 11px;border-radius:6px;cursor:pointer;font-weight:400;">__TOP1L__</button>
               <button data-v="50" style="appearance:none;border:0;background:transparent;color:#8A97AD;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;padding:5px 11px;border-radius:6px;cursor:pointer;font-weight:400;">Top 50</button>
               <button data-v="999" style="appearance:none;border:0;background:transparent;color:#8A97AD;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;padding:5px 11px;border-radius:6px;cursor:pointer;font-weight:400;">__TOTAL_LABEL__</button>
             </div></div>
