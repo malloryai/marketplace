@@ -37,6 +37,7 @@ The `mallory` plugin includes the following skills:
 | **vulnerability-escalation**     | python    | Privilege escalation and vulnerability chain analysis; uses mallory-api + [assetquery](https://pypi.org/project/assetquery/) for deployed asset discovery |
 | **compromised-package-scan**     | python    | Cross-reference GitHub SBOMs against Mallory's latest compromised packages to find supply-chain exposure; uses mallory-api + the `gh` CLI                  |
 | **hunt-pack**                    | python    | Build a threat-hunt pack scoped to an industry + geography: prioritized actors with dated targeting evidence, ATT&CK techniques, IOCs, CVEs, per-actor hunting guidance, and a shareable brief                |
+| **daily-briefing**               | python    | Generate a self-contained HTML threat-intel daily briefing filtered by topics, industry, and geo; uses mallory-api for data                              |
 
 ## Example Use Cases
 
@@ -98,10 +99,13 @@ marketplace/
 │       │   │   ├── SKILL.md
 │       │   │   ├── reference.md
 │       │   │   └── scripts/scan.py
-│       │   └── hunt-pack/
+│       │   ├── hunt-pack/
+│       │   │   ├── SKILL.md
+│       │   │   ├── assets/regions.json
+│       │   │   └── scripts/build_hunt_pack.py
+│       │   └── daily-briefing/
 │       │       ├── SKILL.md
-│       │       ├── assets/regions.json
-│       │       └── scripts/build_hunt_pack.py
+│       │       └── scripts/briefing.py
 ├── scripts/
 │   └── validate_plugins.py
 ├── pyproject.toml
