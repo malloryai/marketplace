@@ -1,0 +1,39 @@
+{
+  "_comment": "Geo resolution map. The Mallory geographies taxonomy endpoint returns empty, so actor target_geographies are matched by ISO-3166-1 alpha-2 country_code. Full country-name resolution is handled by the optional pycountry library; this file supplies (a) analyst region groupings that no standard library provides, and (b) a colloquial-alias fallback (UK, USA, UAE, ...) used when pycountry is not installed.",
+  "countries": {
+    "united states": "US", "usa": "US", "u.s.": "US", "america": "US",
+    "united kingdom": "GB", "uk": "GB", "britain": "GB", "great britain": "GB",
+    "canada": "CA", "mexico": "MX", "brazil": "BR", "argentina": "AR", "chile": "CL", "colombia": "CO",
+    "germany": "DE", "france": "FR", "spain": "ES", "italy": "IT", "netherlands": "NL",
+    "belgium": "BE", "switzerland": "CH", "austria": "AT", "sweden": "SE", "norway": "NO",
+    "denmark": "DK", "finland": "FI", "ireland": "IE", "portugal": "PT", "poland": "PL",
+    "ukraine": "UA", "russia": "RU", "russian federation": "RU", "belarus": "BY",
+    "czech republic": "CZ", "czechia": "CZ", "romania": "RO", "greece": "GR", "hungary": "HU",
+    "turkey": "TR", "turkiye": "TR", "israel": "IL", "saudi arabia": "SA", "united arab emirates": "AE",
+    "uae": "AE", "qatar": "QA", "kuwait": "KW", "iran": "IR", "iraq": "IQ", "egypt": "EG",
+    "china": "CN", "japan": "JP", "south korea": "KR", "korea": "KR", "north korea": "KP", "dprk": "KP",
+    "india": "IN", "pakistan": "PK", "bangladesh": "BD", "vietnam": "VN", "thailand": "TH",
+    "indonesia": "ID", "malaysia": "MY", "singapore": "SG", "philippines": "PH", "taiwan": "TW",
+    "hong kong": "HK", "australia": "AU", "new zealand": "NZ",
+    "south africa": "ZA", "nigeria": "NG", "kenya": "KE", "morocco": "MA"
+  },
+  "regions": {
+    "north america": ["US", "CA", "MX"],
+    "latin america": ["MX", "BR", "AR", "CL", "CO", "PE", "VE", "EC", "BO", "PY", "UY"],
+    "south america": ["BR", "AR", "CL", "CO", "PE", "VE", "EC", "BO", "PY", "UY"],
+    "europe": ["GB", "DE", "FR", "ES", "IT", "NL", "BE", "CH", "AT", "SE", "NO", "DK", "FI", "IE", "PT", "PL", "CZ", "RO", "GR", "HU", "UA", "SK", "BG", "HR", "SI", "LT", "LV", "EE", "LU"],
+    "western europe": ["GB", "DE", "FR", "ES", "IT", "NL", "BE", "CH", "AT", "IE", "PT", "LU"],
+    "eastern europe": ["PL", "CZ", "SK", "RO", "BG", "HU", "UA", "BY", "RU"],
+    "eu": ["DE", "FR", "ES", "IT", "NL", "BE", "AT", "SE", "DK", "FI", "IE", "PT", "PL", "CZ", "RO", "GR", "HU", "SK", "BG", "HR", "SI", "LT", "LV", "EE", "LU"],
+    "nordics": ["SE", "NO", "DK", "FI", "IS"],
+    "middle east": ["IL", "SA", "AE", "QA", "KW", "IR", "IQ", "EG", "JO", "LB", "SY", "YE", "OM", "BH"],
+    "mena": ["IL", "SA", "AE", "QA", "KW", "IR", "IQ", "EG", "JO", "LB", "SY", "YE", "OM", "BH", "MA", "DZ", "TN", "LY"],
+    "apac": ["CN", "JP", "KR", "IN", "VN", "TH", "ID", "MY", "SG", "PH", "TW", "HK", "AU", "NZ", "PK", "BD"],
+    "asia": ["CN", "JP", "KR", "KP", "IN", "VN", "TH", "ID", "MY", "SG", "PH", "TW", "HK", "PK", "BD"],
+    "southeast asia": ["VN", "TH", "ID", "MY", "SG", "PH"],
+    "east asia": ["CN", "JP", "KR", "KP", "TW", "HK"],
+    "oceania": ["AU", "NZ"],
+    "africa": ["ZA", "NG", "KE", "MA", "EG", "DZ", "TN", "ET", "GH"],
+    "five eyes": ["US", "GB", "CA", "AU", "NZ"]
+  }
+}
