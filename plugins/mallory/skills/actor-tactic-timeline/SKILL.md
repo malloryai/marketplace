@@ -93,11 +93,17 @@ dates and finish near-instantly. Use `--no-cache` to force a refetch.
   (tactic × period counts) for charting.
 - **Markdown**: a tactic-emphasis matrix across periods followed by per-period
   detail highlighting newly emerging and most-observed techniques.
-- **HTML** (`--format html`): a standalone, self-contained report (inline CSS,
-  no external assets) — the tactic matrix rendered as a count-shaded heatmap so
-  emphasis shifts read at a glance, followed by per-period detail with emerging
-  and top techniques as chips. Writes to `--out` (or `<actor-slug>_tactics.html`
-  in the current directory) and prints the absolute path to stderr.
+- **HTML** (`--format html`): a standalone, interactive report in the Mallory
+  dark-brand style — a **technique × time heatmap** (one row per MITRE
+  technique, colored by kill-chain tactic, each cell's brightness scaled by
+  √(attribution count)) with a sticky technique column and all-time total bars.
+  Live in-page controls re-render client-side from an embedded monthly dataset:
+  **Top N** (25 / 50 / all), **order** (kill-chain vs. volume), **bucket**
+  (quarter vs. month), and **year range**. Headline stat cards and a tactic
+  legend frame the chart. Writes to `--out` (or `<actor-slug>_tactics.html` in
+  the current directory) and prints the absolute path to stderr. The only
+  external dependency is the Geist webfont (loaded from Google Fonts), which
+  degrades to the system sans/mono stack offline.
 
 ## Analysis Workflow
 
