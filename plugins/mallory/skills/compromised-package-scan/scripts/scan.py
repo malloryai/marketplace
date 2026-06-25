@@ -174,19 +174,21 @@ def fetch_compromised(limit: int, ecosystem: str | None, workers: int) -> dict:
         versions: set[str] = set()
         ctypes: set[str] = set()
         sources: set[str] = set()
-        try:
-            for c in client.packages.compromises(pkg["uuid"], limit=100):
-                for v in c.get("compromised_versions") or []:
-                    if v:
-                        versions.add(str(v))
-                if c.get("compromise_type"):
-                    ctypes.add(c["compromise_type"])
-                if c.get("source"):
-                    sources.add(c["source"])
-        except Exception as e:  # noqa: BLE001 - best-effort enrichment
-            sys.stderr.write(f"warn: compromises({pkg.get('name')}): {e}\n")
+        uuid = pkg.get("uuid")
+        if uuid:
+            try:
+                for c in client.packages.compromises(uuid, limit=100):
+                    for v in c.get("compromised_versions") or []:
+                        if v:
+                            versions.add(str(v))
+                    if c.get("compromise_type"):
+                        ctypes.add(c["compromise_type"])
+                    if c.get("source"):
+                        sources.add(c["source"])
+            except Exception as e:  # noqa: BLE001 - best-effort enrichment
+                sys.stderr.write(f"warn: compromises({pkg.get('name')}): {e}\n")
         return {
-            "uuid": pkg["uuid"],
+            "uuid": uuid,
             "name": pkg.get("name"),
             "ecosystem": norm_ecosystem(pkg.get("ecosystem")),
             "last_compromised_at": pkg.get("last_compromised_at"),
