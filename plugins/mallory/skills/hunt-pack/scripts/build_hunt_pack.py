@@ -563,7 +563,7 @@ def build_pack(scope, scored_list, tactics, cve_details, now):
         iocs = s.get("iocs", [])
         entry = {
             "uuid": a["uuid"],
-            "name": a.get("display_name") or a.get("name"),
+            "name": a.get("display_name") or a.get("name") or a["uuid"][:12],
             "aliases": a.get("family_name"),
             "motivation": a.get("motivation"),
             "mention_count": a.get("mention_count"),
