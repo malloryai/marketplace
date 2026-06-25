@@ -3,7 +3,8 @@
 Complete reference for the `malloryapi` Python SDK.
 
 ```bash
-pip install --upgrade malloryapi
+uv pip install --system --upgrade malloryapi
+# or, on an externally-managed Python without uv: pip install --user --upgrade malloryapi
 ```
 
 ```python

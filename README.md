@@ -18,7 +18,8 @@ The **mallory-api** skill is the hub for all Mallory API access. It uses the off
 
 ```bash
 # Install the SDK (always grab the latest)
-pip install --upgrade malloryapi
+uv pip install --system --upgrade malloryapi
+# or, on an externally-managed Python without uv: pip install --user --upgrade malloryapi
 
 # Set your API key (the SDK reads this automatically)
 export MALLORY_API_KEY="your-api-key"
