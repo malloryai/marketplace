@@ -67,8 +67,10 @@ def norm_name(name: str | None) -> str | None:
 
 
 # Range / non-pinned version indicators. If a version matches, it is NOT a single
-# pinned version and cannot be used for an exact compromised-version match.
-_RANGE_RE = re.compile(r"^[\^~]|[<>=]|\s|\bx\b|\*|\|\||,| - ", re.IGNORECASE)
+# pinned version and cannot be used for an exact compromised-version match. A
+# leading "=" is an exact-pin marker (handled in is_pinned), so it is not listed
+# here -- only true range operators (>= <= > <) are.
+_RANGE_RE = re.compile(r"^[\^~]|(?:>=|<=|>|<)|\s|\bx\b|\*|\|\||,| - ", re.IGNORECASE)
 
 
 def is_pinned(version: str | None) -> bool:
@@ -77,6 +79,10 @@ def is_pinned(version: str | None) -> bool:
     v = version.strip()
     if not v:
         return False
+    # A leading "=" pins an exact version (e.g. "=1.2.3"); strip it before the
+    # range check so it stays consistent with clean_version's normalization.
+    if v.startswith("="):
+        v = v[1:].lstrip()
     return _RANGE_RE.search(v) is None
 
 
@@ -242,11 +248,16 @@ def preprocess_sbom(repo: str | None, sbom_file: str | None) -> dict:
             version = parsed.get("version") or p.get("versionInfo")
         else:
             # Fallback: SPDX name may be "npm:foo" / "pip:foo"; otherwise bare.
+            # Only treat the prefix as an ecosystem when it is a recognized one --
+            # a bare "groupId:artifactId" Maven name must stay intact, not be split
+            # into ecosystem="org.springframework", name="spring-core".
             raw_name = p.get("name") or ""
             ecosystem, name = None, raw_name
             if ":" in raw_name:
                 pre, rest = raw_name.split(":", 1)
-                ecosystem, name = norm_ecosystem(pre), rest
+                normalized_pre = norm_ecosystem(pre)
+                if normalized_pre in ECOSYSTEM_ALIASES.values():
+                    ecosystem, name = normalized_pre, rest
             version = p.get("versionInfo")
         if not name:
             continue
@@ -339,14 +350,23 @@ def print_table(report: dict) -> None:
 # ----------------------------------------------------------------------------
 # CLI
 # ----------------------------------------------------------------------------
+def positive_int(value: str) -> int:
+    """argparse type: reject non-positive integers (e.g. --workers 0 crashes
+    ThreadPoolExecutor; a negative --limit silently yields no results)."""
+    ivalue = int(value)
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError(f"must be a positive integer, got {value}")
+    return ivalue
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     c = sub.add_parser("compromised", help="Pull latest compromised packages from Mallory")
-    c.add_argument("--limit", type=int, default=100)
+    c.add_argument("--limit", type=positive_int, default=100)
     c.add_argument("--ecosystem", help="Restrict to one ecosystem (npm, pypi, gem, golang, ...)")
-    c.add_argument("--workers", type=int, default=8)
+    c.add_argument("--workers", type=positive_int, default=8)
     c.add_argument("-o", "--output-file")
 
     s = sub.add_parser("sbom", help="Pull + preprocess GitHub SBOM(s)")
@@ -362,9 +382,9 @@ def main() -> None:
     r = sub.add_parser("run", help="End-to-end scan for one or more repos")
     r.add_argument("repos", nargs="*", help="owner/repo (one or more)")
     r.add_argument("--sbom-file", action="append", default=[], help="Local SPDX JSON file(s)")
-    r.add_argument("--limit", type=int, default=100)
+    r.add_argument("--limit", type=positive_int, default=100)
     r.add_argument("--ecosystem")
-    r.add_argument("--workers", type=int, default=8)
+    r.add_argument("--workers", type=positive_int, default=8)
     r.add_argument("--output", choices=["json", "table"], default="table")
 
     args = ap.parse_args()
