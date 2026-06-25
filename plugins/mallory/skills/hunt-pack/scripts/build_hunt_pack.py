@@ -550,12 +550,17 @@ def build_pack(scope, scored_list, tactics, cve_details, now):
     actors = []
     for s in scored_list:
         a = s["actor"]
-        techs = sorted(s["technique_freq"].items(), key=lambda kv: kv[1], reverse=True)
+        # Enrichment fields default to empty: enrich_actor may have failed for
+        # this actor (the _enrich wrapper returns the un-enriched dict), and one
+        # bad actor must not crash the whole pack.
+        technique_name = s.get("technique_name", {})
+        techs = sorted(s.get("technique_freq", {}).items(), key=lambda kv: kv[1], reverse=True)
         cves = []
-        for cve, rec in sorted(s["cves"].items()):
+        for cve, rec in sorted(s.get("cves", {}).items()):
             d = cve_details.get(cve, {})
             cves.append({**rec, **d})
         cves.sort(key=lambda c: (c.get("cvss") or 0), reverse=True)
+        iocs = s.get("iocs", [])
         entry = {
             "uuid": a["uuid"],
             "name": a.get("display_name") or a.get("name"),
@@ -568,13 +573,13 @@ def build_pack(scope, scored_list, tactics, cve_details, now):
             "why_relevant": why_relevant(s),
             "summary": (a.get("gen_description") or "").strip()[:600] or None,
             "top_techniques": [
-                {"mitre_attack_id": t, "name": s["technique_name"].get(t),
+                {"mitre_attack_id": t, "name": technique_name.get(t),
                  "tactics": tactics.get(t, []), "count": c}
                 for t, c in techs[:15]
             ],
-            "malware": s["malware"][:15],
-            "ioc_count": len(s["iocs"]),
-            "iocs": s["iocs"],          # full set — display limits applied in renderers
+            "malware": s.get("malware", [])[:15],
+            "ioc_count": len(iocs),
+            "iocs": iocs,               # full set — display limits applied in renderers
             "cve_count": len(cves),
             "cves": cves,               # full set — display limits applied in renderers
         }
