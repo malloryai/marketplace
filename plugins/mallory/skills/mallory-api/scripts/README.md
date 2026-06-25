@@ -3,8 +3,8 @@
 The Mallory API CLI is provided by the `malloryapi` package. Install and run:
 
 ```bash
-pip install malloryapi
-# or: uv pip install --system malloryapi
+pip install --upgrade malloryapi
+# or: uv pip install --system --upgrade malloryapi
 
 malloryapi --help-resources   # list resources and methods
 malloryapi vulnerabilities get CVE-2024-1234

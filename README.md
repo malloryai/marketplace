@@ -17,8 +17,8 @@ A [Claude Code plugin marketplace](https://code.claude.com/docs/en/plugin-market
 The **mallory-api** skill is the hub for all Mallory API access. It uses the official [`malloryapi`](https://pypi.org/project/malloryapi/) Python SDK. The **adversary-emulation-planning** and **vulnerability-escalation** skills use mallory-api when they need threat actor or vulnerability data.
 
 ```bash
-# Install the SDK
-pip install malloryapi
+# Install the SDK (always grab the latest)
+pip install --upgrade malloryapi
 
 # Set your API key (the SDK reads this automatically)
 export MALLORY_API_KEY="your-api-key"
@@ -35,6 +35,7 @@ The `mallory` plugin includes the following skills:
 | **mallory-api**                  | python    | Query Mallory threat intelligence API for actors, vulnerabilities, exploits, malware (hub for API access)                                                 |
 | **adversary-emulation-planning** | knowledge | Adversary emulation and TTP research using MITRE ATT&CK; uses mallory-api for data                                                                        |
 | **vulnerability-escalation**     | python    | Privilege escalation and vulnerability chain analysis; uses mallory-api + [assetquery](https://pypi.org/project/assetquery/) for deployed asset discovery |
+| **actor-tactic-timeline**        | python    | Chart how a threat actor's MITRE ATT&CK TTPs evolve over time; uses mallory-api for observation data                                                       |
 
 ## Example Use Cases
 
@@ -51,6 +52,7 @@ The `mallory` plugin includes the following skills:
 ### Adversary Simulation
 
 - Research threat actor TTPs via MITRE ATT&CK
+- Track how an actor's tactics evolve over time and spot emerging techniques
 - Plan red team and purple team exercises
 
 ### Exploit & Vulnerability Analysis
@@ -76,10 +78,13 @@ marketplace/
 │       │   │   └── scripts/client.py
 │       │   ├── adversary-emulation-planning/
 │       │   │   └── SKILL.md
-│       │   └── vulnerability-escalation/
+│       │   ├── vulnerability-escalation/
+│       │   │   ├── SKILL.md
+│       │   │   ├── reference.md
+│       │   │   └── scripts/escalation.py
+│       │   └── actor-tactic-timeline/
 │       │       ├── SKILL.md
-│       │       ├── reference.md
-│       │       └── scripts/escalation.py
+│       │       └── scripts/tactic_timeline.py
 ├── scripts/
 │   └── validate_plugins.py
 ├── pyproject.toml

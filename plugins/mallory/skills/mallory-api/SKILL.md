@@ -14,10 +14,10 @@ Install the official Python SDK from PyPI:
 
 ```bash
 # Preferred — works on all platforms
-uv pip install --system malloryapi
+uv pip install --system --upgrade malloryapi
 
 # Alternative
-pip install --user malloryapi
+pip install --user --upgrade malloryapi
 ```
 
 > **Warning:** Bare `pip install malloryapi` (without `--user`) will fail on macOS and Linux due to [PEP 668](https://peps.python.org/pep-0668/) externally-managed environment restrictions.
