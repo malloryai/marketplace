@@ -3,7 +3,8 @@
 Complete reference for the `malloryapi` Python SDK.
 
 ```bash
-pip install malloryapi
+uv pip install --system --upgrade malloryapi
+# or, on an externally-managed Python without uv: pip install --user --upgrade malloryapi
 ```
 
 ```python
@@ -211,6 +212,17 @@ Software packages (e.g. from package registries) tracked for compromises and mal
 | `configurations(identifier)`                 | Affected configurations           | `client.packages.configurations("package-uuid")` |
 | `mentions(identifier)`                       | Source mentions                   | `client.packages.mentions("package-uuid")`    |
 
+### Extensions — `client.extensions`
+
+Tracked extensions (e.g. browser/IDE extensions) with their configurations and mentions.
+
+| Method                                       | Description             | Example                                          |
+| -------------------------------------------- | ----------------------- | ------------------------------------------------ |
+| `list(limit, offset, sort, order, **kwargs)` | List extensions         | `client.extensions.list(limit=10)`              |
+| `get(identifier)`                            | Get extension details   | `client.extensions.get("ext-uuid")`             |
+| `configurations(identifier)`                 | Affected configurations | `client.extensions.configurations("ext-uuid")`  |
+| `mentions(identifier)`                       | Source mentions         | `client.extensions.mentions("ext-uuid")`        |
+
 ### Industries — `client.industries`
 
 Industry sector taxonomy (e.g. for actor targeting analysis).
@@ -360,6 +372,21 @@ Collections that scope entities, topics, and sources to a team, with member mana
 | `add_member(uuid, data)`                     | Add a member                      | `client.workspaces.add_member("ws-uuid", {"user_uuid": "..."})`   |
 | `update_member(uuid, user_uuid, data)`       | Update a member's role            | `client.workspaces.update_member("ws-uuid", "u-uuid", {"role": "admin"})` |
 | `remove_member(uuid, user_uuid)`             | Remove a member                   | `client.workspaces.remove_member("ws-uuid", "u-uuid")`            |
+
+### Profiles — `client.profiles`
+
+Saved collections of entities and topics (similar to workspaces).
+
+| Method                       | Description                   | Example                                                       |
+| ---------------------------- | ----------------------------- | ------------------------------------------------------------- |
+| `list(offset, limit, **kwargs)` | List profiles              | `client.profiles.list(limit=20)`                              |
+| `create(data)`               | Create a profile              | `client.profiles.create({"name": "Energy Sector"})`         |
+| `get(uuid)`                  | Get profile details           | `client.profiles.get("profile-uuid")`                         |
+| `update(uuid, data)`         | Update a profile              | `client.profiles.update("profile-uuid", {"name": "Renamed"})` |
+| `delete(uuid)`               | Delete a profile              | `client.profiles.delete("profile-uuid")`                      |
+| `entities(uuid)`             | List profile entities         | `client.profiles.entities("profile-uuid")`                    |
+| `add_entities(uuid, data)`   | Add entities to a profile     | `client.profiles.add_entities("profile-uuid", {"entities": [...]})` |
+| `add_topics(uuid, data)`     | Add topics to a profile       | `client.profiles.add_topics("profile-uuid", {"topics": ["ransomware"]})` |
 
 ## Automation
 
