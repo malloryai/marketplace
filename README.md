@@ -37,7 +37,9 @@ The `mallory` plugin includes the following skills:
 | **adversary-emulation-planning** | knowledge | Adversary emulation and TTP research using MITRE ATT&CK; uses mallory-api for data                                                                        |
 | **vulnerability-escalation**     | python    | Privilege escalation and vulnerability chain analysis; uses mallory-api + [assetquery](https://pypi.org/project/assetquery/) for deployed asset discovery |
 | **actor-tactic-timeline**        | python    | Chart how a threat actor's MITRE ATT&CK TTPs evolve over time; uses mallory-api for observation data                                                       |
+| **compromised-package-scan**     | python    | Cross-reference GitHub SBOMs against Mallory's latest compromised packages to find supply-chain exposure; uses mallory-api + the `gh` CLI                  |
 | **hunt-pack**                    | python    | Build a threat-hunt pack scoped to an industry + geography: prioritized actors with dated targeting evidence, ATT&CK techniques, IOCs, CVEs, per-actor hunting guidance, and a shareable brief                |
+| **daily-briefing**               | python    | Generate a self-contained HTML threat-intel daily briefing filtered by topics, industry, and geo; uses mallory-api for data                              |
 
 ## Example Use Cases
 
@@ -69,6 +71,12 @@ The `mallory` plugin includes the following skills:
 - Map privilege escalation chains
 - Find where vulnerable software is deployed across AWS, Azure, GCP, GitHub, CrowdStrike
 
+### Supply-Chain Exposure
+
+- Pull the latest compromised packages (npm/PyPI account takeovers, malicious versions) from Mallory
+- Pre-process a repo's GitHub SBOM into a normalized package/version list
+- Cross-reference to flag confirmed-compromised vs. needs-review dependencies
+
 ## Repository Structure
 
 ```
@@ -94,10 +102,17 @@ marketplace/
 │       │   │   ├── SKILL.md
 │       │   │   ├── assets/fonts_css.txt
 │       │   │   └── scripts/tactic_timeline.py
-│       │   └── hunt-pack/
+│       │   ├── compromised-package-scan/
+│       │   │   ├── SKILL.md
+│       │   │   ├── reference.md
+│       │   │   └── scripts/scan.py
+│       │   ├── hunt-pack/
+│       │   │   ├── SKILL.md
+│       │   │   ├── assets/regions.json
+│       │   │   └── scripts/build_hunt_pack.py
+│       │   └── daily-briefing/
 │       │       ├── SKILL.md
-│       │       ├── assets/regions.json
-│       │       └── scripts/build_hunt_pack.py
+│       │       └── scripts/briefing.py
 ├── scripts/
 │   └── validate_plugins.py
 ├── pyproject.toml
