@@ -44,6 +44,27 @@ except ImportError:
     )
     sys.exit(1)
 
+# MITRE ATT&CK enterprise tactics in kill-chain order, with display labels.
+# Order doubles as the index into the mono-blue color ramp shared with the
+# heatmap's client-side palette, so summary bars and cells stay color-aligned.
+TACTIC_LABELS = {
+    "reconnaissance": "Reconnaissance",
+    "resource-development": "Resource Development",
+    "initial-access": "Initial Access",
+    "execution": "Execution",
+    "persistence": "Persistence",
+    "privilege-escalation": "Privilege Escalation",
+    "defense-evasion": "Defense Evasion",
+    "credential-access": "Credential Access",
+    "discovery": "Discovery",
+    "lateral-movement": "Lateral Movement",
+    "collection": "Collection",
+    "command-and-control": "Command & Control",
+    "exfiltration": "Exfiltration",
+    "impact": "Impact",
+}
+TACTIC_ORDER = list(TACTIC_LABELS)
+
 # Geist Sans + Mono inlined as base64 @font-face so the HTML report is fully
 # self-contained — no external requests, which keeps it CSP-safe for the
 # claude.ai Artifact tool.
@@ -495,9 +516,62 @@ def render_html(actor: dict, obs: list[dict], tactics: dict, pub: dict,
         )
         aka_html = f"aka {chips} &nbsp;—&nbsp; "
 
+    # "Key tactics" summary: rank kill-chain tactics by evidence volume so the
+    # report leads with the actor's dominant playbook before the dense heatmap.
+    tac_ev: Counter = Counter()
+    tac_tech: dict[str, set] = defaultdict(set)
+    for r in rows:
+        if r["tac"] == "unknown":
+            continue
+        tac_ev[r["tac"]] += r["c"]
+        tac_tech[r["tac"]].add(r["tid"])
+
+    A, B, n_ramp = (3, 58, 178), (120, 186, 255), len(TACTIC_ORDER)
+
+    def tac_color(tac: str) -> str:
+        i = TACTIC_ORDER.index(tac) if tac in TACTIC_ORDER else 0
+        frac = i / (n_ramp - 1)
+        rgb = [round(a + (b - a) * frac) for a, b in zip(A, B)]
+        return f"rgb({rgb[0]},{rgb[1]},{rgb[2]})"
+
+    ranked = tac_ev.most_common(6)
+    max_ev = ranked[0][1] if ranked else 1
+    bars = []
+    for tac, ev in ranked:
+        label = str(TACTIC_LABELS.get(tac, tac))
+        ntech = len(tac_tech[tac])
+        share = (ev / evidence * 100) if evidence else 0
+        barw = (ev / max_ev * 100) if max_ev else 0
+        col = tac_color(tac)
+        bars.append(
+            f'<div style="display:flex;align-items:center;gap:12px;margin:0 0 10px;">'
+            f'<div style="width:160px;flex:none;font-size:12.5px;color:#E8EDF5;display:flex;align-items:center;gap:8px;">'
+            f'<span style="width:8px;height:8px;border-radius:2px;flex:none;background:{col};"></span>{html.escape(label)}</div>'
+            f'<div style="flex:1;min-width:80px;height:9px;background:#0B1422;border-radius:5px;overflow:hidden;">'
+            f'<div style="height:100%;width:{barw:.1f}%;background:{col};border-radius:5px;"></div></div>'
+            f'<div style="width:172px;flex:none;text-align:right;font-family:\'Geist Mono\',ui-monospace,monospace;'
+            f'font-size:11.5px;color:#8A97AD;"><b style="color:#C2CBDD;">{ev:,}</b> obs · {ntech} tech · {share:.0f}%</div>'
+            '</div>'
+        )
+    if bars:
+        lead = str(TACTIC_LABELS.get(ranked[0][0], ranked[0][0]))
+        key_tactics_html = (
+            '<section style="background:linear-gradient(180deg,#141B28,#0F1520);'
+            'border:1px solid rgba(140,160,190,.16);border-radius:16px;padding:22px 22px 14px;'
+            'box-shadow:0 1px 3px rgba(0,0,0,.4);margin:0 0 26px;">'
+            '<h2 style="font-size:16px;margin:0 0 3px;font-weight:600;letter-spacing:-.01em;color:#E8EDF5;">Key tactics</h2>'
+            '<p style="margin:0 0 18px;color:#8A97AD;font-size:12.5px;font-family:\'Geist Mono\',ui-monospace,monospace;">'
+            f'Dominant ATT&amp;CK tactics by evidence volume &mdash; led by {html.escape(lead)}.</p>'
+            + "".join(bars) +
+            '</section>'
+        )
+    else:
+        key_tactics_html = ""
+
     topn = max(1, top)
     repl = {
         "__FONT_CSS__": load_font_css(),
+        "__KEY_TACTICS__": key_tactics_html,
         "__TITLE__": html.escape(name),
         "__EYEBROW__": "Mallory · Threat Actor Profile",
         "__AKA__": aka_html,
@@ -556,6 +630,8 @@ __FONT_CSS__
       <div style="background:#121A28;padding:16px 18px;"><div style="font-family:'Geist Mono',ui-monospace,monospace;font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em;color:#4DA3FF;">__TOP_ID__</div><div style="font-size:11.5px;color:#8A97AD;margin-top:3px;text-transform:uppercase;letter-spacing:.07em;">top: __TOP_NAME__</div></div>
       <div style="background:#121A28;padding:16px 18px;"><div style="font-family:'Geist Mono',ui-monospace,monospace;font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em;">__PEAK__</div><div style="font-size:11.5px;color:#8A97AD;margin-top:3px;text-transform:uppercase;letter-spacing:.07em;">peak quarter</div></div>
     </div>
+
+    __KEY_TACTICS__
 
     <section style="background:linear-gradient(180deg,#141B28,#0F1520);border:1px solid rgba(140,160,190,.16);border-radius:16px;padding:22px 22px 16px;box-shadow:0 1px 3px rgba(0,0,0,.4);">
       <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:18px;">
