@@ -85,6 +85,13 @@ endpoint is currently empty, so use codes like `US`, `UA`, `DE`).
   and product names appear reliably in CVE descriptions, so this narrows vulns
   well (e.g. `fortinet` cuts ~100 trending vulns to the handful that are
   Fortinet). It is a hard filter: a section can legitimately come back empty.
+  Matching is **word-boundary aware**, so short tokens don't match inside
+  unrelated words (`aws` won't hit "flaws", `rds` won't hit Oracle "ords"),
+  while distinctive short / dotted / spaced names still work (`s3`, `ec2`,
+  `next.js`, `delta lake`). Boundaries can't disambiguate *whole-word* product
+  collisions, though — `sentry` will still match "Ivanti Sentry", and common
+  English words (`slack`, `resend`, `temporal`) match unrelated prose — so
+  curate ambiguous terms out of the list rather than relying on the matcher.
 - **Industry / geo** are applied as *structured* filters on trending threat
   actors via their `target_industries` (GICS) and `target_geographies` (country
   code) associations. Stories carry no structured industry/geo field, so for
