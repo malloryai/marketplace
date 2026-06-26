@@ -88,11 +88,36 @@ def _md_inline(text: str, limit: int = 320) -> str:
     return out
 
 
+_TERM_CACHE: dict[str, "re.Pattern[str]"] = {}
+
+
+def _term_pattern(term: str) -> "re.Pattern[str]":
+    """Compile (and cache) a word-boundary matcher for a tech term.
+
+    Plain substring matching produced false positives when a short token
+    appeared inside an unrelated word — e.g. ``aws`` in "flaws", ``rds`` in
+    Oracle "ords", ``ecr`` in "secrets". We anchor each term on alphanumeric
+    boundaries so distinctive short tokens (``s3``, ``ec2``) and dotted/spaced
+    names (``next.js``, ``delta lake``) still match, while in-word collisions do
+    not. Note this cannot resolve *whole-word* product-name collisions (e.g.
+    ``sentry`` matching "Ivanti Sentry"); curate ambiguous terms in the list.
+    """
+    pat = _TERM_CACHE.get(term)
+    if pat is None:
+        pat = re.compile(r"(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9])")
+        _TERM_CACHE[term] = pat
+    return pat
+
+
 def _text_match(item: dict, terms: list[str], fields: list[str]) -> bool:
     if not terms:
         return True
     blob = " ".join(str(item.get(f, "") or "") for f in fields).lower()
-    return any(t.lower() in blob for t in terms)
+    for term in terms:
+        term = term.lower().strip()
+        if term and _term_pattern(term).search(blob):
+            return True
+    return False
 
 
 def _resolve_industries(client) -> dict[str, str]:
