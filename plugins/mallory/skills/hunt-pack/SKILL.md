@@ -137,4 +137,4 @@ Artifact(file_path="<out>/brief.html", favicon="🎯", label="<industry>-<geo>-h
 
 - **mallory-api** — the underlying SDK/CLI and full resource reference.
 - **adversary-emulation-planning** — turn a selected actor's TTPs into an emulation plan.
-- **ttp-heatmap** — technique-over-time heatmap for a single actor in the pack.
+- **actor-tactic-timeline** — technique-over-time TTP heatmap for a single actor in the pack.
