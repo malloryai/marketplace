@@ -32,8 +32,9 @@ enum members. The individual playbook specifies qualifier and recurrence.
 Preserve exact open findings. Preserve dismissals; do not recreate or reopen
 without an explicit user instruction. Fixed recurrence is workflow-specific.
 Unless that skill establishes fresh evidence meeting its recurrence rule,
-suppress fixed history as well. Only exposure validation performs monotonic
-severity/confidence escalation; it never lowers either dimension.
+suppress fixed history as well. Exposure validation may recommend increased
+severity/confidence for an open finding, but this SDK/API contract cannot apply
+such an escalation safely against concurrent writers; use the procedure below.
 
 Construct an evidence-backed payload from observed data:
 
@@ -62,17 +63,26 @@ history reads before retrying; never change identity to evade deduplication.
 Link only supported verified vulnerability/threat_actor/story UUIDs in
 `entities`; other records belong in evidence/asset_details.
 
-For exposure escalation only, read the current finding and send just the
-increased fields plus a body preserving existing details and explaining new
-evidence:
+For an open exposure finding, read its current detail and compare each dimension
+with the new assessment. If either should increase, report the finding UUID,
+observed severity/confidence and body, proposed increases, and supporting new
+evidence. Preserve the existing finding; **do not call `findings.update`**.
 
-```python
-result = client.findings.update(finding_uuid, {
-    'severity': new_severity, 'confidence': new_confidence, 'body': combined_body,
-})
-```
+The 0.4.0 SDK sends an unconditional PATCH and the API accepts no expected
+version, ETag/If-Match, or compare-and-set precondition. The server locks its own
+PATCH transaction, but cannot tell that a client's earlier GET is stale. A
+read/compare/PATCH/readback loop can still lower another writer's newer severity
+or confidence and replace its body before that loss is detected. A local lock
+also cannot coordinate other clients. Do not claim a monotonic update or rely
+on readback to repair such a race.
 
-Omit fields that did not increase. Do not change identity/status. Read back the
-finding before reporting success, and record old/new values. Concurrent writers
-are not transactionally locked by the SDK; if state changed, reread and reassess
-rather than overwriting newer evidence. No claimed automatic exactly-once writes.
+If finding writes/escalation were requested, record `qualifies_but_not_filed`
+with reason `atomic_escalation_unavailable`, retain the recommendation and
+coverage gap, and keep the affected work pending. Report-only recommendations
+use `not_requested` and need no Findings access. If complete history shows an
+exact open finding already at or above the assessment in both dimensions, link
+it as `already_open`. This limitation does not block authorized creates when
+complete history establishes no matching finding. Never create a second finding
+to work around an escalation gap. Automatic escalation requires a future,
+verified server-side conditional or monotonic update operation before this
+playbook can enable it.

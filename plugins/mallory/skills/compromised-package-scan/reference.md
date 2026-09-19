@@ -103,7 +103,11 @@ End-to-end `compromised` → `sbom` → `crossref`. Same flags as `compromised` 
 
 ## Matching rules
 
-- Join key: `(normalized ecosystem, lowercased name)`.
+- Join key: `(normalized ecosystem, ecosystem-normalized name)`. All names are
+  stripped of surrounding whitespace. PyPI names are lowercased and every run of
+  `-`, `_`, or `.` becomes `-` (for example, `Build.Helper` matches `build-helper`).
+  npm, NuGet, and gem names are lowercased. Other ecosystems preserve case,
+  including Go and Maven; `Example/Lib` and `example/lib` stay distinct for Go.
 - `CONFIRMED`: SBOM version is `pinned` **and** (after stripping a leading `v`/`=`) equals one of
   the package's `compromised_versions`.
 - `REVIEW`: name + ecosystem match but the above isn't satisfied (range version, version mismatch,

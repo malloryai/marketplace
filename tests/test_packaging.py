@@ -20,7 +20,7 @@ class PackagingTests(unittest.TestCase):
             "status": "complete",
             "summary": "Synthetic example",
             "results": [],
-            "coverage": {"gaps": []},
+            "coverage": {"examined": 0, "requested": 0, "gaps": []},
             "finding_actions": [],
         }
         for plugin in (ROOT / "plugins").iterdir():
@@ -67,13 +67,26 @@ class PackagingTests(unittest.TestCase):
             [x["name"] for x in claude["plugins"]],
             [x["name"] for x in codex["plugins"]],
         )
-        for entry in codex["plugins"]:
-            plugin = ROOT / entry["source"]["path"]
-            self.assertEqual(
-                json.loads((plugin / ".codex-plugin/plugin.json").read_text())["name"],
-                entry["name"],
-            )
-            self.assertTrue((plugin / ".claude-plugin/plugin.json").is_file())
+        for catalog, manifest_directory in (
+            (claude, ".claude-plugin"),
+            (codex, ".codex-plugin"),
+        ):
+            for entry in catalog["plugins"]:
+                with self.subTest(catalog=manifest_directory, plugin=entry["name"]):
+                    source = entry["source"]
+                    if manifest_directory == ".codex-plugin":
+                        self.assertIsInstance(source, dict)
+                        path = source["path"]
+                    else:
+                        self.assertIsInstance(source, str)
+                        path = source
+                    plugin = (ROOT / path).resolve()
+                    self.assertTrue(plugin.is_relative_to((ROOT / "plugins").resolve()))
+                    self.assertEqual(plugin.name, entry["name"])
+                    manifest = plugin / manifest_directory / "plugin.json"
+                    self.assertEqual(
+                        json.loads(manifest.read_text())["name"], entry["name"]
+                    )
 
     def test_new_workflow_markdown_links_stay_inside_the_installed_plugin(self):
         for plugin in (ROOT / "plugins").iterdir():

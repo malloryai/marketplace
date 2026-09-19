@@ -10,7 +10,9 @@ from shared/ rather than maintained independently.
 
 Reports carry scope, a fixed UTC window where applicable, evidence, actions,
 coverage gaps, and finding outcomes. Report-only is the default. Explicit
-finding requests authorize only the documented creates/escalations. Preserve
+finding requests authorize only the documented creates. Review established that
+0.4.0 cannot safely escalate concurrent findings; requested escalations remain
+evidence-backed recommendations with an explicit filing gap. Preserve
 existing dismissals and workflow-specific fixed-finding recurrence semantics.
 Scheduling and external delivery belong to the host and are opt-in.
 

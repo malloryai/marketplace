@@ -21,7 +21,7 @@ placeholders were replaced with plain words to satisfy skill-frontmatter validat
 
 ## Offline checks
 
-- 26 unittest tests: actual SDK + httpx.MockTransport request/response recipes,
+- 39 unittest tests: actual SDK + httpx.MockTransport request/response recipes,
   duplicate-write exception contract, pagination reconciliation/truncation,
   scanner provenance/formats/partial evidence, report escaping and saved state.
 - Isolated plugin copies render JSON/Markdown/HTML without repo-level shared files.
@@ -61,7 +61,33 @@ programs. Host agents still need to read source evidence and apply the playbooks
 - Workspace briefing scopes stories to the workspace; findings/vulnerability
   matches are explicitly tenant-wide. Checkpoints track collection, not delivery.
 - Agent-level finding preflights, exact identity/history and recurrence rules must
-  be applied before using the SDK's create/update methods. No live writes tested.
+  be applied before using the SDK's create method. Requested escalations remain
+  recommendations with a filing gap: unconditional PATCH cannot safely preserve
+  concurrent severity/confidence/body changes. No live writes tested.
 - An assessment report and an HTML file are not an external delivery receipt.
 - Neither the SDK nor local checkpoint files provide atomic cross-agent locks.
   Use one collector per state file and reconcile uncertain writes before retrying.
+
+
+## PR review follow-up
+
+The review fixes add required per-result UTC assessment timestamps, explicit
+coverage counts, nested report validation, returned-page offset checks, and the
+correct first-unconsumed offset when a review cap stops inside a page. Workspace
+briefing produces the stricter report envelope. Malformed CycloneDX inputs become
+per-source coverage gaps; generated bundles now remove orphaned mirror files and
+both marketplace catalog formats are checked against their manifests.
+
+Exposure review persists completed event IDs and pending/retry work in a fixed
+window, so more than 20 CVEs sharing a timestamp can make progress without losing
+failed work. Mentions and stories are paginated before a CVE can complete.
+Organization relationships are queried only after a verified merge survivor is
+resolved. The 0.4.0 API cannot guard concurrent finding updates, so automatic
+escalation is disabled while assessments and authorized creates remain available.
+
+The shared-client warning was checked against the exact SDK and HTTPX source:
+`SyncHttpClient` wraps `httpx.Client`, which documents thread sharing. Resource
+parameters are request-local and the scanner closes its client after its executor
+joins. No per-worker client rewrite is needed. This is source verification, not
+a live concurrency test. Offline recipe tests exercise the actual documented
+Python helpers; they are not full agent-behavior trials or live write validation.

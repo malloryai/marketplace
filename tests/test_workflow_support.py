@@ -72,7 +72,11 @@ class SupportTests(unittest.TestCase):
             "status": "partial",
             "summary": "<script>alert(1)</script>",
             "results": [],
-            "coverage": {"gaps": ["inventory unavailable"]},
+            "coverage": {
+                "examined": 0,
+                "requested": 1,
+                "gaps": ["inventory unavailable"],
+            },
             "finding_actions": [],
         }
         with tempfile.TemporaryDirectory() as directory:
@@ -94,7 +98,7 @@ class SupportTests(unittest.TestCase):
                     "status": "complete",
                     "summary": "clear",
                     "results": [],
-                    "coverage": {"gaps": ["failed"]},
+                    "coverage": {"examined": 0, "requested": 1, "gaps": ["failed"]},
                     "finding_actions": [],
                 }
             )

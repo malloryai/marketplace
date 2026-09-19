@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,6 +18,87 @@ spec.loader.exec_module(scan)
 
 
 class ScannerTests(unittest.TestCase):
+    def test_malformed_cyclonedx_shapes_raise_value_error(self):
+        cases = [
+            ([], "SBOM"),
+            (
+                {"bomFormat": "CycloneDX", "components": [], "metadata": None},
+                "metadata",
+            ),
+            ({"bomFormat": "CycloneDX", "components": [], "metadata": []}, "metadata"),
+            ({"bomFormat": "CycloneDX", "components": [None]}, "components\\[0\\]"),
+            ({"bomFormat": "CycloneDX", "components": ["pkg"]}, "components\\[0\\]"),
+            (
+                {"bomFormat": "CycloneDX", "components": [{"components": None}]},
+                "components\\[0\\].components",
+            ),
+            (
+                {"bomFormat": "CycloneDX", "components": [{"components": {}}]},
+                "components\\[0\\].components",
+            ),
+            ({"bomFormat": "CycloneDX", "components": [{"purl": 42}]}, "purl"),
+            ({"bomFormat": "CycloneDX", "components": [{"name": {}}]}, "name"),
+            (
+                {
+                    "bomFormat": "CycloneDX",
+                    "components": [{"name": "pkg", "version": 1}],
+                },
+                "version",
+            ),
+        ]
+        for raw, error in cases:
+            with (
+                self.subTest(raw=raw),
+                patch.object(scan, "_load_sbom_json", return_value=raw),
+            ):
+                with self.assertRaisesRegex(ValueError, error):
+                    scan.preprocess_sbom(None, "fixture.json")
+
+    def test_cli_retains_other_sources_when_cyclonedx_is_malformed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            good = Path(directory) / "good.json"
+            good.write_text(
+                json.dumps(
+                    {
+                        "bomFormat": "CycloneDX",
+                        "components": [
+                            {
+                                "name": "parent",
+                                "purl": "pkg:npm/parent@1.0.0",
+                                "components": [
+                                    {"name": "child", "purl": "pkg:npm/child@2.0.0"}
+                                ],
+                            }
+                        ],
+                    }
+                )
+            )
+            bad = Path(directory) / "bad.json"
+            bad.write_text(
+                json.dumps(
+                    {"bomFormat": "CycloneDX", "components": [{"components": None}]}
+                )
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    scan.__file__,
+                    "sbom",
+                    "--sbom-file",
+                    str(good),
+                    "--sbom-file",
+                    str(bad),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            sources = json.loads(result.stdout)["sboms"]
+            self.assertEqual(sources[0]["count"], 2)
+            self.assertEqual(sources[1]["source"], str(bad))
+            self.assertEqual(sources[1]["count"], 0)
+            self.assertTrue(sources[1]["coverage_gaps"])
+
     def test_gitlab_cyclonedx_preserves_component_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "gitlab.json"

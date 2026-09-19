@@ -26,17 +26,44 @@ checkpoint, or the last 24 hours on its first run.
 
 ## Check every company
 
+Resolve the canonical survivor before requesting relationships:
+
 ```python
-organization = client.organizations.get(organization_uuid)
+def resolve_survivor(fetch, initial_uuid):
+    """Verify each identity and return the final record plus its merge chain."""
+    current, visited, chain = str(initial_uuid), set(), []
+    for _ in range(4):  # Initial record plus at most three merge hops.
+        if current in visited:
+            raise ValueError('Merge cycle')
+        visited.add(current)
+        record = fetch(current)
+        if not record.get('uuid') or str(record['uuid']) != current:
+            raise ValueError('Merge target identity could not be verified')
+        chain.append(current)
+        successor = record.get('merged_into_uuid')
+        if not successor:
+            return record, chain
+        current = str(successor)
+    raise ValueError('Merge chain exceeds three hops')
+
+organization, organization_chain = resolve_survivor(
+    client.organizations.get, organization_uuid)
+survivor_uuid = organization['uuid']
 breaches = collect_pages(lambda **kw: client.organizations.breaches(
     survivor_uuid, sort='created_at', order='desc', **kw))
-breach = client.breaches.get(breach_uuid)
+canonical_breaches = []
+for row in breaches:
+    breach, breach_chain = resolve_survivor(client.breaches.get, row['uuid'])
+    canonical_breaches.append({'breach': breach, 'merge_chain': breach_chain})
 ```
 
-Follow `merged_into_uuid` for organizations and breached-event identities, with
-a visited set and at most three hops. A cycle, unreadable record or unfinished
-merge makes that subject unchecked. Do not query the tombstone and call an empty
-result clean. Report changed canonical identifiers.
+Catch resolution failures per company/breach: a cycle, unreadable record,
+unverified target or unfinished merge makes that subject unchecked. Do not query
+the tombstone and call an empty result clean. Report changed canonical identifiers
+and keep predecessor/survivor chains with the stable roster label. On
+`CoverageError`, preserve its `items` and `offset`, assess available evidence as
+partial, and keep the company unchecked with its prior checkpoint. Continue
+independent companies; do not label an incomplete relationship read clean.
 
 Use the breach record's **created_at** for monitoring: when Mallory learned of
 it, not occurrence or publication. Filter the exhausted descending collection

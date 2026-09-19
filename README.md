@@ -52,7 +52,7 @@ and writes still depends on the key's tenant permissions and populated inventory
 | | `technology-advisory-monitor` | Advisory/profile applicability and optional findings |
 | | `supply-chain-compromise-monitor` | Repository/component assessment and optional findings |
 | | `compromised-package-scan` | Bundled copy of the standalone scanner |
-| `mallory-investigations` | `exposure-validation` | Exploited CVE/asset presence, reachability and optional escalation |
+| `mallory-investigations` | `exposure-validation` | Exploited CVE/asset presence, reachability and escalation recommendations |
 | | `observable-investigation` | Exact sighting/opinion matches and optional findings |
 
 The new assessments are **agent-executed playbooks**: the agent reads evidence,
@@ -66,14 +66,16 @@ agent tools are prerequisites.
 - “Create a 30-minute tabletop from the last seven days of stories for our engineering team.”
 - “Check this vendor roster for breaches newly added since yesterday; report only.”
 - “Does this advisory apply to our gateway's exact version and enabled modules?”
-- “Check newly exploited CVEs against our inventory and create or escalate findings.”
+- “Check newly exploited CVEs against our inventory and create findings and recommend escalations.”
 - “Review the last 24 hours of observable sightings against stored malicious opinions.”
 - “Check these GitHub repositories and GitLab SBOM exports for compromised releases.”
 - “Give me our workspace briefing, including newly matched stories and new findings.”
 
 New workflows default to reports. Explicit requests enable documented finding
 writes. Evidence, exact scope/window, actions and coverage gaps accompany every
-assessment. Reports distinguish complete/partial/blocked; incomplete reads never
+assessment. Existing findings receive escalation recommendations only: 0.4.0
+has no conditional update guard, so a requested escalation is reported as a filing
+gap. Reports distinguish complete/partial/blocked; incomplete reads never
 become an all-clear. Existing dismissals and workflow-specific resolution rules
 are preserved. Component presence or a malicious sighting does not establish
 execution or tenant compromise.

@@ -10,7 +10,7 @@ Produce a concise readable answer and save a JSON artifact with these fields:
   "window": {"start": "2026-01-01T00:00:00Z", "end": "2026-01-02T00:00:00Z"},
   "status": "partial",
   "summary": "One company could not be checked.",
-  "results": [{"subject": "Example vendor", "verdict": "unchecked", "evidence": [], "recommended_actions": ["Retry the failed lookup"]}],
+  "results": [{"subject": "Example vendor", "verdict": "unchecked", "assessed_at": "2026-01-02T00:00:00Z", "evidence": [], "recommended_actions": ["Retry the failed lookup"]}],
   "coverage": {"examined": 0, "requested": 1, "gaps": ["Organization lookup unavailable"]},
   "finding_actions": []
 }
@@ -19,18 +19,52 @@ Produce a concise readable answer and save a JSON artifact with these fields:
 This is a synthetic shape example, not real intelligence. `scope` carries the
 confirmed workspace/roster/profiles/repositories and authenticated tenant UUID
 when relevant. `window` is null for specified-advisory or supplied-SBOM requests
-without a time window. An assessment timestamp belongs in each result.
+without a time window. Each result requires `assessed_at`, the UTC assessment
+time in `YYYY-MM-DDTHH:MM:SS[.ffffff]Z` form (or the equivalent `+00:00` suffix).
+Dates without a time, timezone-free values, invalid dates and non-UTC offsets
+are rejected. Keep event, ingestion and assessment times separate.
 
-Each result identifies its subject, verdict, supporting evidence (actual SDK
-method/parameters, record IDs, source links, relevant returned values and dates),
-and recommended actions. Use the workflow's verdict vocabulary. Include every
+Each result requires a nonempty string `subject`, a `verdict` from the table
+below, `assessed_at`, an `evidence` list and a `recommended_actions` list of
+nonempty strings. Evidence entries are objects or strings containing actual SDK
+methods/parameters, record IDs, source links, relevant returned values and dates;
+recommendations describe the next useful action. Include every
 requested subject, including unchecked ones; a negative means only the stated
 scope and evidence were checked. Do not invent links, IDs or receipts.
 
-`finding_actions` contains the exact identity and `not_requested`, `created`,
-`already_open`, `escalated`, `suppressed_by_prior_resolution`, or
-`qualifies_but_not_filed`, verified UUID/link if available, and before/after
-values for escalation. Report-only matching results use `not_requested`.
+| Skill | Result verdicts |
+| --- | --- |
+| third-party-breach-monitor | `matched`, `no_matching_breaches`, `linked_not_breached_party`, `linked_role_unclear`, `unchecked` |
+| technology-advisory-monitor | `affected`, `not_affected`, `unresolved`, `unchecked` |
+| exposure-validation | `exposed`, `not_exposed`, `unverifiable`, `unchecked` |
+| observable-investigation | `malicious_opinion`, `no_malicious_opinion`, `unchecked` |
+| supply-chain-compromise-monitor / compromised-package-scan | `confirmed_component_exposure`, `potential_match`, `no_affected_version`, `unchecked` |
+| story-based-tabletop-exercise | `selected`, `not_selected`, `unchecked` |
+| daily-briefing | `reported`, `incomplete` |
+
+This vocabulary applies to assessment artifacts; the scanner's raw data keeps
+its existing `CONFIRMED`/`REVIEW` statuses. Custom skill names may use the listed
+verdicts; new vocabulary requires a contract/validator update. Unknown metadata
+fields remain allowed at every level.
+
+`coverage.examined` and `coverage.requested` are required nonnegative integer
+counts in the same unit: completed subject assessments versus the declared
+scope. State the unit in `coverage.unit` when ambiguous (for workspace briefings,
+the unit is the four briefing sections, not evidence rows). Include unchecked
+subjects in requested, not examined. Examined cannot exceed requested; complete
+requires equality. `coverage.gaps` is always a list, including when empty.
+
+Every `finding_actions` entry requires an `identity` object and `status`.
+Identity requires nonempty strings `tenant_uuid`, `definition_tenant_uuid`,
+`definition_slug`, `asset_type`, `asset_identifier`, plus `qualifier` (an exact
+string, or null for no qualifier). Use `not_requested`, `created`, `already_open`,
+`escalated`, `suppressed_by_prior_resolution`, or `qualifies_but_not_filed` as the
+status. Report-only matching results use `not_requested`; no actions uses `[]`.
+`created`, `already_open` and `escalated` require a verified `finding_uuid`;
+add a verified `url` only when available. `escalated` additionally requires
+nonempty `before`/`after` objects. It is reserved for a future verified guarded
+update; malloryapi 0.4.0 must instead report requested escalation as
+`qualifies_but_not_filed`, as described in [finding lifecycle](finding-lifecycle.md).
 
 - **complete:** all promised checks completed for the declared scope.
 - **partial:** useful work completed but unresolved evidence, failed reads,

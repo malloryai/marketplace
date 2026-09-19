@@ -32,6 +32,7 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import unquote
@@ -254,7 +255,14 @@ def _load_sbom_json(repo: str | None, sbom_file: str | None) -> dict:
 
 
 def preprocess_sbom(repo: str | None, sbom_file: str | None) -> dict:
+    """Normalize one SPDX/CycloneDX inventory; reject malformed source shapes.
+
+    ValueError lets the CLI report a source-level coverage gap while retaining
+    valid inventories from the other inputs.
+    """
     raw = _load_sbom_json(repo, sbom_file)
+    if not isinstance(raw, dict):
+        raise ValueError("SBOM must be an object")
     sbom = raw.get("sbom", raw)
     if not isinstance(sbom, dict):
         raise ValueError("SBOM must be an object")
@@ -262,12 +270,25 @@ def preprocess_sbom(repo: str | None, sbom_file: str | None) -> dict:
     if sbom.get("bomFormat") == "CycloneDX":
         if not isinstance(sbom.get("components"), list):
             raise ValueError("CycloneDX components are missing")
-        observed_at = sbom.get("metadata", {}).get("timestamp")
+        metadata = sbom.get("metadata", {})
+        if not isinstance(metadata, Mapping):
+            raise ValueError("CycloneDX metadata must be an object")
+        observed_at = metadata.get("timestamp")
 
-        def components(rows):
-            for row in rows:
+        def components(rows, location="components"):
+            """Walk nested components, naming malformed fields in source errors."""
+            if not isinstance(rows, list):
+                raise ValueError(f"CycloneDX {location} must be a list")
+            for index, row in enumerate(rows):
+                item = f"{location}[{index}]"
+                if not isinstance(row, Mapping):
+                    raise ValueError(f"CycloneDX {item} must be an object")
+                for field in ("name", "version", "purl"):
+                    value = row.get(field)
+                    if value is not None and not isinstance(value, str):
+                        raise ValueError(f"CycloneDX {item}.{field} must be a string")
                 yield row
-                yield from components(row.get("components", []))
+                yield from components(row.get("components", []), f"{item}.components")
 
         converted = []
         for row in components(sbom["components"]):

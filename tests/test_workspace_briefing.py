@@ -1,4 +1,5 @@
 import importlib.util
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -64,6 +65,16 @@ class BriefingTests(unittest.TestCase):
         self.assertEqual(report["status"], "complete")
         self.assertEqual(report["sections"]["newly_matched_stories"], [])
         self.assertEqual(state["matched_story_ids"], ["old-story"])
+        self.assertEqual(report["coverage"]["examined"], 4)
+        self.assertEqual(report["coverage"]["requested"], 4)
+        self.assertTrue(
+            all(row["assessed_at"] == NOW.isoformat() for row in report["results"])
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            paths = brief.write_report(
+                report, Path(directory) / "briefing", html_output=True
+            )
+            self.assertTrue(Path(paths["html"]).is_file())
 
     def test_new_match_can_be_old_story(self):
         client = Client()
@@ -96,6 +107,7 @@ class BriefingTests(unittest.TestCase):
         )
         self.assertEqual(report["status"], "partial")
         self.assertEqual(next_state["matched_story_ids"], ["previous"])
+        self.assertEqual(report["coverage"]["examined"], 3)
         self.assertEqual(next_state["checkpoints"]["matches"], "2026-01-01T00:00:00Z")
 
     def test_first_failed_section_keeps_initial_window_for_retry(self):

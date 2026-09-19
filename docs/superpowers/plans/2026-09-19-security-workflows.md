@@ -46,7 +46,8 @@ Use deterministic fixtures and a local scenario review; do not claim agent-eval 
 PyPI 0.4.0 returned 404; exact v0.4.0 tag f23ae7f installed from an archived source
 checkout into .venv without including uncommitted SDK files.
 
-Implementation completed with 26 offline tests. Shared references/helpers and the
+Initial implementation completed with 26 offline tests; PR review added
+regressions and tightened output, pagination, queue and finding-write contracts. Shared references/helpers and the
 scanner are bundled reproducibly. The canonical directory is shared/ plus the
 scanner in plugins/mallory. Codex compatibility additionally required quoting
 the pre-existing hunt-pack frontmatter description; its workflow is unchanged.

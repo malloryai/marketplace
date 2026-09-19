@@ -5,7 +5,53 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import re
+from datetime import datetime
 from pathlib import Path
+
+RESULT_VERDICTS = {
+    "third-party-breach-monitor": {
+        "matched",
+        "no_matching_breaches",
+        "linked_not_breached_party",
+        "linked_role_unclear",
+        "unchecked",
+    },
+    "technology-advisory-monitor": {
+        "affected",
+        "not_affected",
+        "unresolved",
+        "unchecked",
+    },
+    "exposure-validation": {"exposed", "not_exposed", "unverifiable", "unchecked"},
+    "observable-investigation": {
+        "malicious_opinion",
+        "no_malicious_opinion",
+        "unchecked",
+    },
+    "supply-chain-compromise-monitor": {
+        "confirmed_component_exposure",
+        "potential_match",
+        "no_affected_version",
+        "unchecked",
+    },
+    "compromised-package-scan": {
+        "confirmed_component_exposure",
+        "potential_match",
+        "no_affected_version",
+        "unchecked",
+    },
+    "story-based-tabletop-exercise": {"selected", "not_selected", "unchecked"},
+    "daily-briefing": {"reported", "incomplete"},
+}
+FINDING_STATUSES = {
+    "not_requested",
+    "created",
+    "already_open",
+    "escalated",
+    "suppressed_by_prior_resolution",
+    "qualifies_but_not_filed",
+}
 
 
 class CoverageError(ValueError):
@@ -43,12 +89,23 @@ def collect_pages(fetch, *, limit=100, max_items=None, **params):
                 )
             rows, total, metadata = page, len(page), {}
         elif isinstance(page, dict):
+            if "offset" in page and (
+                type(page["offset"]) is not int or page["offset"] != offset
+            ):
+                raise CoverageError(
+                    "Returned page offset does not match request", items, offset
+                )
             rows, total, metadata = (
                 page.get("items", page.get("data")),
                 page.get("total"),
                 page,
             )
         else:
+            returned_offset = getattr(page, "offset", None)
+            if type(returned_offset) is not int or returned_offset != offset:
+                raise CoverageError(
+                    "Returned page offset does not match request", items, offset
+                )
             rows, total, metadata = (
                 getattr(page, "items", None),
                 getattr(page, "total", None),
@@ -80,14 +137,86 @@ def collect_pages(fetch, *, limit=100, max_items=None, **params):
             items.append(row)
             if max_items is not None and len(items) >= max_items and len(items) < total:
                 raise CoverageError(
-                    "Review cap reached before exhaustion", items, offset
+                    "Review cap reached before exhaustion", items, len(items)
                 )
         offset += len(rows)
         if offset == total:
             return items
 
 
+def nonempty_string(value):
+    """Return whether a field contains text rather than an empty value."""
+    return isinstance(value, str) and bool(value.strip())
+
+
+def validate_result(result, verdicts):
+    """Validate an assessment before it can appear in a readable artifact."""
+    required = {"subject", "verdict", "assessed_at", "evidence", "recommended_actions"}
+    if not isinstance(result, dict) or required - result.keys():
+        raise ValueError("Result is missing required fields")
+    if (
+        not nonempty_string(result["subject"])
+        or not nonempty_string(result["verdict"])
+        or result["verdict"] not in verdicts
+    ):
+        raise ValueError("Invalid result subject or verdict")
+    timestamp = result["assessed_at"]
+    if not isinstance(timestamp, str) or not re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+00:00)", timestamp
+    ):
+        raise ValueError("Result assessed_at must be a UTC timestamp")
+    datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    if not isinstance(result["evidence"], list) or not all(
+        isinstance(item, (dict, str)) for item in result["evidence"]
+    ):
+        raise ValueError("Result evidence must be a list of objects or strings")
+    if not isinstance(result["recommended_actions"], list) or not all(
+        nonempty_string(item) for item in result["recommended_actions"]
+    ):
+        raise ValueError("Result recommended_actions must be a list of strings")
+
+
+def validate_finding_action(action):
+    """Require exact finding identity and distinguish verified writes from intentions."""
+    if not isinstance(action, dict) or not {"identity", "status"} <= action.keys():
+        raise ValueError("Finding action is missing identity or status")
+    if (
+        not nonempty_string(action["status"])
+        or action["status"] not in FINDING_STATUSES
+    ):
+        raise ValueError("Invalid finding action status")
+    identity = action["identity"]
+    fields = {
+        "tenant_uuid",
+        "definition_tenant_uuid",
+        "definition_slug",
+        "asset_type",
+        "asset_identifier",
+    }
+    if (
+        not isinstance(identity, dict)
+        or not (fields | {"qualifier"}) <= identity.keys()
+    ):
+        raise ValueError("Finding action is missing exact identity fields")
+    if not all(nonempty_string(identity[field]) for field in fields) or not isinstance(
+        identity["qualifier"], (str, type(None))
+    ):
+        raise ValueError("Invalid finding action identity")
+    if action["status"] in {
+        "created",
+        "already_open",
+        "escalated",
+    } and not nonempty_string(action.get("finding_uuid")):
+        raise ValueError("Verified finding action requires finding_uuid")
+    if action["status"] == "escalated" and not all(
+        isinstance(action.get(field), dict) and action[field]
+        for field in ("before", "after")
+    ):
+        raise ValueError("Escalated finding requires before and after values")
+
+
 def validate_report(report):
+    """Validate version-one evidence, coverage, and actions; allow extra metadata."""
     required = {
         "schema_version",
         "skill",
@@ -101,11 +230,17 @@ def validate_report(report):
     }
     if not isinstance(report, dict) or required - report.keys():
         raise ValueError("Report is missing required envelope fields")
-    if report["schema_version"] != 1 or report["status"] not in {
-        "complete",
-        "partial",
-        "blocked",
-    }:
+    if (
+        type(report["schema_version"]) is not int
+        or report["schema_version"] != 1
+        or not isinstance(report["status"], str)
+        or report["status"]
+        not in {
+            "complete",
+            "partial",
+            "blocked",
+        }
+    ):
         raise ValueError("Invalid report version or status")
     if not isinstance(report["skill"], str) or not isinstance(report["summary"], str):
         raise ValueError("skill and summary must be strings")
@@ -118,8 +253,40 @@ def validate_report(report):
     coverage = report["coverage"]
     if not isinstance(coverage, dict) or not isinstance(coverage.get("gaps"), list):
         raise ValueError("coverage.gaps must be a list")
+    for field in ("examined", "requested"):
+        if type(coverage.get(field)) is not int or coverage[field] < 0:
+            raise ValueError(f"coverage.{field} must be a nonnegative integer")
+    if coverage["examined"] > coverage["requested"]:
+        raise ValueError("Examined coverage exceeds requested coverage")
     if report["status"] == "complete" and coverage["gaps"]:
         raise ValueError("A report with coverage gaps cannot be complete")
+    if report["status"] == "complete" and coverage["examined"] != coverage["requested"]:
+        raise ValueError("A complete report must examine every requested subject")
+    verdicts = RESULT_VERDICTS.get(
+        report["skill"], set().union(*RESULT_VERDICTS.values())
+    )
+    for result in report["results"]:
+        validate_result(result, verdicts)
+    for action in report["finding_actions"]:
+        validate_finding_action(action)
+    if report["status"] == "complete" and (
+        any(
+            result["verdict"]
+            in {
+                "unchecked",
+                "incomplete",
+                "unresolved",
+                "unverifiable",
+                "linked_role_unclear",
+            }
+            for result in report["results"]
+        )
+        or any(
+            action["status"] == "qualifies_but_not_filed"
+            for action in report["finding_actions"]
+        )
+    ):
+        raise ValueError("Incomplete assessments or filing gaps cannot be complete")
     if report["window"] is not None and (
         not isinstance(report["window"], dict)
         or not {"start", "end"} <= report["window"].keys()
@@ -160,6 +327,8 @@ def write_report(report, output_prefix, *, html_output=False):
                 "## " + str(result.get("subject", "Result")),
                 "",
                 "**Verdict:** " + str(result.get("verdict", "reported")),
+                "",
+                "Assessed at: " + result["assessed_at"],
                 "",
             ]
         )
@@ -225,6 +394,7 @@ def write_report(report, output_prefix, *, html_output=False):
 
 
 def main():
+    """Render a caller-owned JSON assessment without making API requests."""
     parser = argparse.ArgumentParser(
         description="Render a workflow JSON result as Markdown and optional HTML; no API calls."
     )

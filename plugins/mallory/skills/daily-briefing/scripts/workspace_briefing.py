@@ -19,6 +19,7 @@ from workflow_support import CoverageError, collect_pages, write_report
 
 
 def utc(value):
+    """Parse a timezone-aware checkpoint for consistent UTC comparisons."""
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if parsed.tzinfo is None:
         raise ValueError("Checkpoint must include a timezone")
@@ -26,6 +27,7 @@ def utc(value):
 
 
 def collect_workspace(client, workspace_uuid, *, state=None, now=None):
+    """Collect scoped briefing sections while retaining failed-section checkpoints."""
     now = now or datetime.now(timezone.utc)
     if now.tzinfo is None:
         raise ValueError("Assessment time must include a timezone")
@@ -59,6 +61,7 @@ def collect_workspace(client, workspace_uuid, *, state=None, now=None):
     sections, gaps, windows = {}, [], {}
 
     def read(name, fetch, **params):
+        """Keep partial evidence and advance a section only after complete collection."""
         try:
             rows = collect_pages(fetch, **params)
         except CoverageError as exc:
@@ -74,6 +77,7 @@ def collect_workspace(client, workspace_uuid, *, state=None, now=None):
         return True
 
     def start_for(name):
+        """Retain the initial retry boundary even when the first collection fails."""
         start = previous["checkpoints"].get(name, default_start)
         if utc(start) > now:
             raise ValueError(f"{name} checkpoint is in the future")
@@ -134,6 +138,7 @@ def collect_workspace(client, workspace_uuid, *, state=None, now=None):
 
     # Prefer demonstrated asset relevance, then freshness, inside the matched workspace.
     def story_rank(row):
+        """Prioritize asset-matched stories, breaking ties by freshness."""
         count = row.get("matched_asset_count")
         return (
             count if isinstance(count, (int, float)) else 0,
@@ -163,6 +168,7 @@ def collect_workspace(client, workspace_uuid, *, state=None, now=None):
                 or (name == "newly_matched_stories" and not complete_matches)
                 else "reported",
                 "count": len(sections[name]),
+                "assessed_at": end,
                 "evidence": sections[name],
                 "recommended_actions": [],
             }
@@ -185,13 +191,20 @@ def collect_workspace(client, workspace_uuid, *, state=None, now=None):
         "summary": f"{len(sections['new_findings'])} new findings; {len(sections['newly_matched_stories'])} newly matched stories; {len(sections['exploited_vulnerabilities'])} newly exploited asset-matched vulnerabilities; {len(sections['stories'])} selected stories. Match state: {match_baseline}.",
         "results": results,
         "sections": sections,
-        "coverage": {"gaps": gaps, "match_baseline": match_baseline},
+        "coverage": {
+            "examined": sum(result["verdict"] == "reported" for result in results),
+            "requested": len(results),
+            "unit": "briefing sections",
+            "gaps": gaps,
+            "match_baseline": match_baseline,
+        },
         "finding_actions": [],
     }
     return report, next_state
 
 
 def save_state(path, state):
+    """Atomically replace caller-owned state after its report has been persisted."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
@@ -211,6 +224,7 @@ def save_state(path, state):
 
 
 def main():
+    """Write a briefing and collection state; return nonzero for partial coverage."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", required=True)
     parser.add_argument(
