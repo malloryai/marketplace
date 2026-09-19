@@ -1,156 +1,142 @@
-## Mallory Security Plugin Marketplace
+# Mallory Security Plugin Marketplace
 
-A [Claude Code plugin marketplace](https://code.claude.com/docs/en/plugin-marketplaces) providing security operations skills for threat intelligence, adversary emulation, and vulnerability research.
+Agent skills for threat intelligence, security monitoring and evidence-based
+investigations, powered by the official [malloryapi Python client](https://github.com/malloryai/malloryapi).
 
-## Quick Start
+## Install
 
-```bash
-# Add the marketplace
+```text
 /plugin marketplace add malloryai/marketplace
-
-# Install the plugin
 /plugin install mallory@mallory
+/plugin install mallory-monitoring@mallory
+/plugin install mallory-investigations@mallory
 ```
 
-## Setup
+Install only the bundles you need. Each includes its own runtime references and
+helpers; monitoring and investigations do not require a sibling plugin installation.
+The repository also includes `.codex-plugin/plugin.json` manifests and a Codex
+catalog at `.agents/plugins/marketplace.json` for adding this repository as a
+Codex marketplace.
 
-The **mallory-api** skill is the hub for all Mallory API access. It uses the official [`malloryapi`](https://pypi.org/project/malloryapi/) Python SDK. The **adversary-emulation-planning** and **vulnerability-escalation** skills use mallory-api when they need threat actor or vulnerability data.
+Use Python 3.10+ in your chosen environment:
 
 ```bash
-# Install the SDK (always grab the latest)
-uv pip install --system --upgrade malloryapi
-# or, on an externally-managed Python without uv: pip install --user --upgrade malloryapi
-
-# Set your API key (the SDK reads this automatically)
-export MALLORY_API_KEY="your-api-key"
+python -m pip install 'malloryapi==0.4.0'
+export MALLORY_API_KEY='your-api-key'
 ```
 
-Get a key at `https://app.mallory.ai/api/keys`.
+If your package index has not published 0.4.0 yet, use the exact v0.4.0 release
+source (the revision used for this change's offline verification):
 
-## Available Skills
-
-The `mallory` plugin includes the following skills:
-
-| Skill                            | Runtime   | Description                                                                                                                                               |
-| -------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **mallory-api**                  | python    | Query Mallory threat intelligence API for actors, vulnerabilities, exploits, malware (hub for API access)                                                 |
-| **adversary-emulation-planning** | knowledge | Adversary emulation and TTP research using MITRE ATT&CK; uses mallory-api for data                                                                        |
-| **vulnerability-escalation**     | python    | Privilege escalation and vulnerability chain analysis; uses mallory-api + [assetquery](https://pypi.org/project/assetquery/) for deployed asset discovery |
-| **actor-tactic-timeline**        | python    | Chart how a threat actor's MITRE ATT&CK TTPs evolve over time; uses mallory-api for observation data                                                       |
-| **compromised-package-scan**     | python    | Cross-reference GitHub SBOMs against Mallory's latest compromised packages to find supply-chain exposure; uses mallory-api + the `gh` CLI                  |
-| **hunt-pack**                    | python    | Build a threat-hunt pack scoped to an industry + geography: prioritized actors with dated targeting evidence, ATT&CK techniques, IOCs, CVEs, per-actor hunting guidance, and a shareable brief                |
-| **daily-briefing**               | python    | Generate a self-contained HTML threat-intel daily briefing filtered by topics, industry, and geo; uses mallory-api for data                              |
-
-## Example Use Cases
-
-### Threat Intelligence
-
-- Query trending vulnerabilities and threat actors
-- Get detailed exploit and exploitation activity data
-
-### Threat Hunting
-
-- Build a hunt pack for an industry + region ("who's targeting energy in the US?")
-- Prioritize actors by recent, cited targeting evidence and get per-actor hunt checklists
-- Export an ATT&CK Navigator layer, IOC sweep list, and CVE watchlist
-
-### Detection Engineering
-
-- Monitor news for new TTPs and IoC information
-- Generate detection candidates in KQL / SQL / Sigma
-
-### Adversary Simulation
-
-- Research threat actor TTPs via MITRE ATT&CK
-- Track how an actor's tactics evolve over time and spot emerging techniques
-- Plan red team and purple team exercises
-
-### Exploit & Vulnerability Analysis
-
-- Analyze exploit efficacy and capability
-- Map privilege escalation chains
-- Find where vulnerable software is deployed across AWS, Azure, GCP, GitHub, CrowdStrike
-
-### Supply-Chain Exposure
-
-- Pull the latest compromised packages (npm/PyPI account takeovers, malicious versions) from Mallory
-- Pre-process a repo's GitHub SBOM into a normalized package/version list
-- Cross-reference to flag confirmed-compromised vs. needs-review dependencies
-
-## Repository Structure
-
+```bash
+python -m pip install 'malloryapi @ git+https://github.com/malloryai/malloryapi.git@f23ae7f0ecd8dab4400a56b2ad8f3fc17a558bb2'
 ```
-marketplace/
-├── .claude-plugin/
-│   └── marketplace.json              # Marketplace catalog
-├── plugins/
-│   └── mallory/                      # The mallory plugin
-│       ├── .claude-plugin/
-│       │   └── plugin.json
-│       ├── skills/
-│       │   ├── mallory-api/
-│       │   │   ├── SKILL.md
-│       │   │   ├── reference.md
-│       │   │   └── scripts/client.py
-│       │   ├── adversary-emulation-planning/
-│       │   │   └── SKILL.md
-│       │   ├── vulnerability-escalation/
-│       │   │   ├── SKILL.md
-│       │   │   ├── reference.md
-│       │   │   └── scripts/escalation.py
-│       │   ├── actor-tactic-timeline/
-│       │   │   ├── SKILL.md
-│       │   │   ├── assets/fonts_css.txt
-│       │   │   └── scripts/tactic_timeline.py
-│       │   ├── compromised-package-scan/
-│       │   │   ├── SKILL.md
-│       │   │   ├── reference.md
-│       │   │   └── scripts/scan.py
-│       │   ├── hunt-pack/
-│       │   │   ├── SKILL.md
-│       │   │   ├── assets/regions.json
-│       │   │   └── scripts/build_hunt_pack.py
-│       │   └── daily-briefing/
-│       │       ├── SKILL.md
-│       │       └── scripts/briefing.py
-├── scripts/
-│   └── validate_plugins.py
-├── pyproject.toml
-└── README.md
+
+Get a key from [Mallory API keys](https://app.mallory.ai/api/keys). Credentials
+stay in the environment. SDK 0.4.0 supplies findings, definitions, sightings,
+advisories, organizations, stories and inventory methods. Availability of data
+and writes still depends on the key's tenant permissions and populated inventory.
+
+## Bundles and outputs
+
+| Plugin | Skill | Output |
+| --- | --- | --- |
+| `mallory` | `mallory-api` | SDK access/reference guide |
+| | `adversary-emulation-planning` | ATT&CK-grounded exercise planning |
+| | `actor-tactic-timeline` | Self-contained TTP heatmap |
+| | `hunt-pack` | Cited actors, hunting hypotheses and shareable hunt pack |
+| | `compromised-package-scan` | Package/version evidence and coverage JSON/table; agent assessment report |
+| | `daily-briefing` | HTML digest; workspace mode adds JSON, Markdown and saved comparison state |
+| | `story-based-tabletop-exercise` | Complete exercise Markdown plus source/coverage JSON |
+| `mallory-monitoring` | `third-party-breach-monitor` | Vendor-by-vendor breach verdicts and optional findings |
+| | `technology-advisory-monitor` | Advisory/profile applicability and optional findings |
+| | `supply-chain-compromise-monitor` | Repository/component assessment and optional findings |
+| | `compromised-package-scan` | Bundled copy of the standalone scanner |
+| `mallory-investigations` | `exposure-validation` | Exploited CVE/asset presence, reachability and escalation recommendations |
+| | `observable-investigation` | Exact sighting/opinion matches and optional findings |
+
+The new assessments are **agent-executed playbooks**: the agent reads evidence,
+uses SDK recipes and writes reports. They are not unattended Python verdict
+engines. Deterministic helpers handle pagination, report artifacts, SBOM parsing
+and workspace-briefing collection. No proprietary mounted paths or internal
+agent tools are prerequisites.
+
+## Try a workflow
+
+- “Create a 30-minute tabletop from the last seven days of stories for our engineering team.”
+- “Check this vendor roster for breaches newly added since yesterday; report only.”
+- “Does this advisory apply to our gateway's exact version and enabled modules?”
+- “Check newly exploited CVEs against our inventory and create findings and recommend escalations.”
+- “Review the last 24 hours of observable sightings against stored malicious opinions.”
+- “Check these GitHub repositories and GitLab SBOM exports for compromised releases.”
+- “Give me our workspace briefing, including newly matched stories and new findings.”
+
+New workflows default to reports. Explicit requests enable documented finding
+writes. Evidence, exact scope/window, actions and coverage gaps accompany every
+assessment. Existing findings receive escalation recommendations only: 0.4.0
+has no conditional update guard, so a requested escalation is reported as a filing
+gap. Reports distinguish complete/partial/blocked; incomplete reads never
+become an all-clear. Existing dismissals and workflow-specific resolution rules
+are preserved. Component presence or a malicious sighting does not establish
+execution or tenant compromise.
+
+Scheduling and email/Slack delivery are host capabilities, invoked only when
+requested. Save roster/profile/state files in caller-owned storage. A generated
+file is not a delivered message. No automatic response/remediation is performed.
+
+## Standalone helpers
+
+Resolve `PLUGIN_ROOT` to the **installed plugin's** absolute directory.
+
+```bash
+# Complete known compromised-package feed + caller-supplied GitLab CycloneDX export.
+python "$PLUGIN_ROOT/skills/compromised-package-scan/scripts/scan.py" run \
+  --sbom-file project.cdx.json --all --output json
+
+# In the mallory plugin: workspace briefing, with state isolated per tenant/workspace.
+python "$PLUGIN_ROOT/skills/daily-briefing/scripts/workspace_briefing.py" \
+  --workspace "$WORKSPACE_UUID" --state output/briefing-state.json \
+  --output-prefix output/daily-briefing
+
+# Render a completed assessment JSON using the common report contract.
+python "$PLUGIN_ROOT/scripts/workflow_support.py" result.json \
+  --output-prefix output/review --html
 ```
+
+The scanner preserves the original `run`, `compromised`, `sbom`, and `crossref`
+commands. It accepts SPDX and CycloneDX (including GitLab exports); GitHub live
+SBOM retrieval uses `gh`. GitLab live inventory/dependency discovery is not
+implemented by this standalone helper. Report missing exports/authorization as
+coverage gaps. The monitor can use existing host provider tools when available.
+
+SDK 0.4.0 has no general cached/live SQL query methods. Reachability and broader
+provider inspection use already-authorized host tools or remain not assessable;
+the plugins do not bypass the SDK through private HTTP calls.
+
+Workspace briefing stories follow the workspace; findings and vulnerability
+matches are labeled tenant-wide. First run establishes the matched-story baseline.
+Partial reads preserve failed-section checkpoints. State tracks collection, not
+external delivery; retry a saved artifact after a delivery failure.
 
 ## Development
 
-### Validate
+Python 3.12+ is required for repository development. Use an isolated environment
+with the pinned client before running offline tests:
 
 ```bash
-# Custom validator (CI-friendly)
-python3 scripts/validate_plugins.py --verbose
-
-# Built-in Claude Code validation
-claude plugin validate .
+python -m unittest discover -s tests -v
+python scripts/sync_bundles.py --check
+python scripts/validate_plugins.py --verbose
+python -m compileall -q plugins shared scripts tests
 ```
 
-### Adding a New Skill
+`shared/` is the canonical runtime/output/finding guidance and pagination/artifact
+helper. The scanner under `plugins/mallory/` is canonical. After editing either,
+run `python scripts/sync_bundles.py`; commit the generated copies too. Do not edit
+bundled copies independently. Plugin installs must work without this repo's
+`shared/` directory or another plugin's files.
 
-1. Create directory: `plugins/mallory/skills/<skill-name>/`
-2. Create `SKILL.md` with frontmatter (`name`, `description`, optionally `allowed-tools`)
-3. Add scripts in `scripts/` subdirectory if needed
-4. Run `python3 scripts/validate_plugins.py` to verify
-
-### Skill Format
-
-Each skill has a `SKILL.md` with YAML frontmatter:
-
-```yaml
----
-name: my-skill
-description: Brief description (max 1024 chars)
-allowed-tools: Bash(python *)
----
-```
-
-### Naming Rules
-
-- 1-64 characters, lowercase alphanumeric with single hyphen separators
-- Regex: `^[a-z0-9]+(-[a-z0-9]+)*$`
+The offline suite uses actual malloryapi 0.4.0 with mocked HTTP responses, checks
+pagination/partial coverage, source formats, report escaping and briefing state.
+It does not establish live API entitlements, current data availability or actual
+finding/delivery success. See [validation notes](docs/validation.md).

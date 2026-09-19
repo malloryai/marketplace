@@ -1,6 +1,6 @@
 ---
 name: hunt-pack
-description: Build a threat-hunt pack scoped to an industry and geography from recent threat-actor activity in Mallory. Use when the user asks for a "hunt pack", "hunt package", "threat hunt brief", or "who's targeting <industry> in <region>" and wants a prioritized actor list with ATT&CK techniques, IOCs, CVEs, hunt hypotheses, and a shareable brief. Examples: "build a hunt pack for energy in the US", "hunt package for banking in Europe", "who should we hunt for in healthcare APAC".
+description: "Build a threat-hunt pack scoped to an industry and geography from recent threat-actor activity in Mallory. Use when the user asks for a \"hunt pack\", \"hunt package\", \"threat hunt brief\", or \"who's targeting an industry in a region\" and wants a prioritized actor list with ATT&CK techniques, IOCs, CVEs, hunt hypotheses, and a shareable brief. Examples: \"build a hunt pack for energy in the US\", \"hunt package for banking in Europe\", \"who should we hunt for in healthcare APAC\"."
 allowed-tools: Bash(python *), Bash(python3 *), Bash(uv *), Bash(pip *), Bash(pipx *), Read, Artifact
 ---
 

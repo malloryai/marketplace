@@ -8,12 +8,22 @@
   },
   "metadata": {
     "description": "Mallory Security threat intelligence and security operations skills",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "plugins": [
     {
       "name": "mallory",
       "source": "./plugins/mallory",
+      "strict": true
+    },
+    {
+      "name": "mallory-monitoring",
+      "source": "./plugins/mallory-monitoring",
+      "strict": true
+    },
+    {
+      "name": "mallory-investigations",
+      "source": "./plugins/mallory-investigations",
       "strict": true
     }
   ]

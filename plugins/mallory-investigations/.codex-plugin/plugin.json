@@ -1,0 +1,37 @@
+{
+  "name": "mallory-investigations",
+  "version": "1.0.0",
+  "description": "Validate exploited-CVE exposure and investigate exact observable sightings with evidence and optional findings.",
+  "author": {
+    "name": "Mallory",
+    "email": "hello@mallory.ai",
+    "url": "https://mallory.ai"
+  },
+  "homepage": "https://mallory.ai",
+  "repository": "https://github.com/malloryai/marketplace",
+  "license": "Apache-2.0",
+  "keywords": [
+    "security",
+    "threat-intelligence",
+    "mallory"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Mallory Investigations",
+    "shortDescription": "Validate exploited-CVE exposure and investigate exact observable sightings with evidence and optional findings.",
+    "longDescription": "Validate exploited-CVE exposure and investigate exact observable sightings with evidence and optional findings. Uses malloryapi 0.4.0. Reports by default; findings only when requested.",
+    "developerName": "Mallory",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://mallory.ai",
+    "defaultPrompt": [
+      "Check exploited vulnerabilities against my assets.",
+      "Review recent observable sightings for malicious opinions."
+    ],
+    "brandColor": "#0066FF"
+  }
+}

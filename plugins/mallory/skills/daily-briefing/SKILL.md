@@ -105,3 +105,48 @@ so it embeds cleanly as an HTML email body or attachment. This skill only
 **generates** the file. To send it, hand the output to whatever mail tool you
 have available (an MCP email tool in-session, a local `sendmail`, or an SMTP
 script) — for example, attach `daily-briefing.html` or inline its contents.
+
+## Workspace-aware briefing (malloryapi 0.4.0)
+
+For "what changed for us?", read [runtime](../../references/runtime.md) and
+[output contract](../../references/output-contract.md). Use the SDK-backed
+collector below; the older `briefing.py` remains available for topic/industry/
+geography intelligence reports.
+
+Confirm the workspace UUID and a durable state-file location, then run:
+
+```bash
+python "$PLUGIN_ROOT/skills/daily-briefing/scripts/workspace_briefing.py" \
+  --workspace "$WORKSPACE_UUID" --state output/workspace-briefing-state.json \
+  --output-prefix output/daily-briefing
+```
+
+`PLUGIN_ROOT` is the resolved installed plugin path, not a guessed cwd. The
+collector writes HTML, Markdown and JSON; it makes no finding writes, schedules,
+or deliveries. Return its verified file paths and concise highlights. Exit 2
+means useful partial output; inspect coverage rather than treating it as empty.
+
+Sections are always present: new findings, newly asset-matched stories, newly
+exploited asset-matched vulnerabilities, and up to five recent workspace stories.
+Stories use workspace followed entities/topics/sources; findings and vulnerability
+matches are explicitly **tenant-wide** because those APIs have no workspace
+filter. Do not represent them as workspace-only. Rank stories by asset-match
+count then freshness; further editorial analysis may explain their relevance
+without changing evidence or pretending the selection was exhaustive.
+
+The collector uses `first_exploitation_at` and positive matched-asset count for
+vulnerabilities. Newly matched stories compare the complete current matched-ID
+set to the previous successful baseline, including older stories; freshness is
+not match recency. First run records a baseline with no newly-matched callout.
+Each time-filtered section keeps its own checkpoint; failed sections retain
+previous state. An unsuccessful first matching read does not create a baseline.
+State is validated against authenticated tenant/workspace and written atomically
+after artifacts. Never share state files across tenants, workspaces or API
+environments. Do not run two collectors concurrently against one state file.
+
+An old fixed-window failure remains a gap until a successful later read covers
+it. The report records each section's absolute window. This collector's state
+tracks successful **reads**, not delivery: if later delivery fails, retain and
+retry the saved artifact with the host, not a fresh collection that would lose
+the prior digest. Email/Slack/other delivery requires the user's explicit request
+and an available host tool. Verify the receipt; don't auto-resend uncertain sends.

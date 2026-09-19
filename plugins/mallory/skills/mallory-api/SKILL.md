@@ -219,7 +219,7 @@ results = client.search.query(q="APT28", types="threat_actor,vulnerability")
 
 ```python
 # Is our attack surface exposed to a specific CVE (or actor/malware/IOC)?
-result = client.assets.exposure_check({"vulnerability": "CVE-2024-1234"})
+result = client.assets.exposure_check({"entities": [{"type": "vulnerability", "identifier": "CVE-2024-1234"}]})
 print(result.get("exposed"), result.get("affected_assets"))
 ```
 
@@ -292,3 +292,25 @@ except AuthenticationError:
 ## Full Resource Reference
 
 See `reference.md` for the complete list of resources, accessors, and methods available in the SDK.
+
+## Public workflow SDK floor
+
+The monitoring/investigation workflows require `malloryapi==0.4.0`. Read
+[public runtime](../../references/runtime.md) for installation, pagination,
+artifacts and host integration. Public calls use the SDK directly; internal
+agent tool names and mounted paths are not public prerequisites.
+
+Additional 0.4.0 resources used by these playbooks:
+
+| Resource | Methods |
+| --- | --- |
+| `client.findings` | `list`, `get`, `create`, `update` |
+| `client.finding_definitions` | `list`, `get` |
+| `client.sightings` | `list` |
+| `client.advisories` | `list`, `get`, `sources`, `export` |
+| `client.packages` | `list`, `compromises`, `search` |
+
+`findings.create` returns a single detail dict; HTTP failures raise SDK exceptions.
+It is not the internal agent tool's batch result. Resource lists do not fetch
+subsequent pages automatically. General cache/live SQL endpoints are not exposed
+by 0.4.0: report a capability gap rather than using private transport methods.
