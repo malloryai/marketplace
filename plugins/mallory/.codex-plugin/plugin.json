@@ -1,0 +1,50 @@
+{
+  "name": "mallory",
+  "version": "1.4.0",
+  "description": "Threat intelligence research, briefings, tabletop exercises, and standalone supply-chain scans.",
+  "author": {
+    "name": "Mallory",
+    "email": "hello@mallory.ai",
+    "url": "https://mallory.ai"
+  },
+  "homepage": "https://mallory.ai",
+  "repository": "https://github.com/malloryai/marketplace",
+  "license": "Apache-2.0",
+  "keywords": [
+    "threat-intelligence",
+    "security",
+    "vulnerability",
+    "exploit",
+    "malware",
+    "adversary-emulation",
+    "cti",
+    "secops",
+    "osint",
+    "detection-engineering",
+    "threat-actors",
+    "mitre-attack",
+    "vulnerability-research",
+    "privilege-escalation",
+    "threat-hunting",
+    "mallory",
+    "tabletop"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Mallory Intelligence",
+    "shortDescription": "Threat intelligence research, briefings, tabletop exercises, and standalone supply-chain scans.",
+    "longDescription": "Threat intelligence research, briefings, tabletop exercises, and standalone supply-chain scans. Uses malloryapi 0.4.0. Reports by default; findings only when requested.",
+    "developerName": "Mallory",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read"
+    ],
+    "websiteURL": "https://mallory.ai",
+    "defaultPrompt": [
+      "Build a tabletop exercise from recent threat intelligence.",
+      "Create a daily intelligence briefing."
+    ],
+    "brandColor": "#0066FF"
+  }
+}

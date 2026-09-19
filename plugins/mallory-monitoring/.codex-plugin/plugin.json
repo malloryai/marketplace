@@ -1,0 +1,37 @@
+{
+  "name": "mallory-monitoring",
+  "version": "1.0.0",
+  "description": "Vendor breach, technology advisory, and software supply-chain monitoring with evidence-backed reports and optional findings.",
+  "author": {
+    "name": "Mallory",
+    "email": "hello@mallory.ai",
+    "url": "https://mallory.ai"
+  },
+  "homepage": "https://mallory.ai",
+  "repository": "https://github.com/malloryai/marketplace",
+  "license": "Apache-2.0",
+  "keywords": [
+    "security",
+    "threat-intelligence",
+    "mallory"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Mallory Monitoring",
+    "shortDescription": "Vendor breach, technology advisory, and software supply-chain monitoring with evidence-backed reports and optional findings.",
+    "longDescription": "Vendor breach, technology advisory, and software supply-chain monitoring with evidence-backed reports and optional findings. Uses malloryapi 0.4.0. Reports by default; findings only when requested.",
+    "developerName": "Mallory",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://mallory.ai",
+    "defaultPrompt": [
+      "Check my vendor roster for new breach intelligence.",
+      "Assess advisories against my saved product configurations."
+    ],
+    "brandColor": "#0066FF"
+  }
+}

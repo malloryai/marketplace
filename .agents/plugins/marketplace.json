@@ -1,0 +1,44 @@
+{
+  "name": "mallory",
+  "interface": {
+    "displayName": "Mallory Security"
+  },
+  "plugins": [
+    {
+      "name": "mallory",
+      "source": {
+        "source": "local",
+        "path": "./plugins/mallory"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "mallory-monitoring",
+      "source": {
+        "source": "local",
+        "path": "./plugins/mallory-monitoring"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "mallory-investigations",
+      "source": {
+        "source": "local",
+        "path": "./plugins/mallory-investigations"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

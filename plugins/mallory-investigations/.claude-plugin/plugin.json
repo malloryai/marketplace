@@ -1,0 +1,18 @@
+{
+  "name": "mallory-investigations",
+  "version": "1.0.0",
+  "description": "Validate exploited-CVE exposure and investigate exact observable sightings with evidence and optional findings.",
+  "author": {
+    "name": "Mallory",
+    "email": "hello@mallory.ai",
+    "url": "https://mallory.ai"
+  },
+  "homepage": "https://mallory.ai",
+  "repository": "https://github.com/malloryai/marketplace",
+  "license": "Apache-2.0",
+  "keywords": [
+    "security",
+    "threat-intelligence",
+    "mallory"
+  ]
+}
